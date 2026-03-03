@@ -26,6 +26,148 @@
   --green: #27ae60;
   --radius: 8px;
 }
+
+/* ══ LIGHT THEME ══════════════════════════════════════════════════════════ */
+body.theme-light {
+  --gold:#9a6f00; --gold-light:#b88a00; --gold-dark:#7a5800;
+  --bg:#f5f3ee; --bg2:#eceae3; --bg3:#e3e0d6; --bg4:#d9d5c9;
+  --border:#c9c4b3; --border-gold:rgba(154,111,0,.35);
+  --text:#1a1608; --text-muted:#6b6050;
+  --red:#c0392b; --green:#1e8449;
+}
+body.theme-light                       { background:var(--bg); color:var(--text); }
+body.theme-light .sidebar              { background:var(--bg2); border-right-color:var(--border-gold); }
+body.theme-light .topbar               { background:var(--bg2); border-bottom-color:var(--border-gold); }
+body.theme-light .main-content         { background:var(--bg); }
+body.theme-light .card                 { background:var(--bg2); box-shadow:0 2px 12px rgba(0,0,0,.10); border-color:var(--border); }
+body.theme-light .card-title           { border-bottom-color:var(--border); color:var(--gold); }
+body.theme-light .stat-card            { background:linear-gradient(135deg,var(--bg3),var(--bg4)); }
+body.theme-light .field-input          { background:#fff; color:var(--text); border-color:var(--border); }
+body.theme-light .nav-item             { color:var(--text); }
+body.theme-light .nav-item:hover       { background:rgba(154,111,0,.10); }
+body.theme-light .nav-item.active      { background:rgba(154,111,0,.16); color:var(--gold); }
+body.theme-light table thead tr        { background:var(--bg3); }
+body.theme-light table tbody tr        { border-bottom-color:var(--border); }
+body.theme-light table tbody tr:hover  { background:var(--bg3); }
+body.theme-light .modal                { background:var(--bg2); border-color:var(--border-gold); }
+body.theme-light .modal-title          { border-bottom-color:var(--border); }
+body.theme-light .btn-secondary        { background:var(--bg3); color:var(--text); border-color:var(--border); }
+body.theme-light .expense-form-wrap    { background:var(--bg3); border-color:var(--border); }
+body.theme-light .info-item            { background:var(--bg3); border-color:var(--border); }
+body.theme-light .rule-row             { background:var(--bg3); border-color:var(--border); }
+body.theme-light .incoming-msg-item    { background:var(--bg3); border-color:var(--border); }
+body.theme-light .info-admin-row       { background:var(--bg3); border-color:var(--border); }
+body.theme-light .msg-item             { background:var(--bg3); border-color:var(--border); }
+body.theme-light .urgent-item          { background:rgba(154,111,0,.10); }
+body.theme-light .export-bar           { background:var(--bg3); border-color:var(--border-gold); }
+body.theme-light .expense-item         { background:var(--bg3); border-color:var(--border); }
+body.theme-light .month-block          { background:var(--bg2); border-color:var(--border); }
+body.theme-light .splash               { background:#1a1608; }
+body.theme-light ::-webkit-scrollbar-track { background:var(--bg2); }
+body.theme-light ::-webkit-scrollbar-thumb { background:var(--gold-dark); }
+
+
+/* == REPORT MESE == */
+.report-wrap{display:flex;flex-direction:column;align-items:center;padding:36px 24px;gap:0}
+.report-card{background:var(--bg2);border:1px solid var(--border-gold);border-radius:18px;padding:44px 40px 50px;width:100%;max-width:720px;text-align:center}
+.report-hdr{font-family:Cinzel,serif;font-size:20px;font-weight:700;color:var(--gold);letter-spacing:3px;text-transform:uppercase;margin-bottom:6px}
+.report-ai-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;border:1px solid var(--border);border-radius:20px;padding:3px 14px;margin-bottom:28px;background:var(--bg3)}
+.report-sep{width:60px;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:0 auto 20px}
+.report-section-title{font-family:Cinzel,serif;font-size:15px;font-weight:700;color:var(--text);letter-spacing:2px;text-transform:uppercase;margin-bottom:28px}
+.report-btns{display:flex;flex-direction:column;gap:16px;align-items:center;width:100%;max-width:440px;margin:0 auto}
+.btn-report{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:18px 28px;border:none;border-radius:14px;cursor:pointer;text-decoration:none;color:#fff;font-family:Cinzel,serif;font-size:14px;font-weight:700;letter-spacing:2px;text-transform:uppercase;transition:transform .2s,box-shadow .2s;position:relative;overflow:hidden}
+.btn-report:hover{transform:translateY(-3px)}
+.btn-report-icon{font-size:22px}
+.btn-report-green{background:linear-gradient(135deg,#0a6e35,#18b04a,#2ed667);box-shadow:0 6px 22px rgba(30,180,80,.45)}
+.btn-report-green:hover{box-shadow:0 10px 30px rgba(30,180,80,.65)}
+.btn-report-red{background:linear-gradient(135deg,#8b0000,#c0392b,#e74c3c);box-shadow:0 6px 22px rgba(192,57,43,.45)}
+.btn-report-red:hover{box-shadow:0 10px 30px rgba(192,57,43,.65)}
+.btn-report-gold{background:linear-gradient(135deg,#7a5800,#c9a227,#e8c84a);box-shadow:0 6px 22px rgba(201,162,39,.45)}
+.btn-report-gold:hover{box-shadow:0 10px 30px rgba(201,162,39,.65)}
+/* == SIDEBAR QUICK LINKS == */
+.nav-qlinks-label{font-size:10px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;padding:6px 18px 4px;opacity:.7}
+.nav-qlink{display:flex;align-items:center;gap:10px;padding:9px 14px;margin:2px 4px;border-radius:var(--radius);cursor:pointer;text-decoration:none;font-size:13px;font-weight:600;color:#fff;transition:opacity .2s,transform .15s;letter-spacing:.5px}
+.nav-qlink:hover{opacity:.88;transform:translateX(2px)}
+.nav-qlink-icon{font-size:15px;flex-shrink:0}
+.nav-qlink.ql-pec{background:linear-gradient(90deg,#1a3a6e,#2756b0)}
+.nav-qlink.ql-drive{background:linear-gradient(90deg,#1d6b3e,#28a35e)}
+.nav-qlink.ql-trello{background:linear-gradient(90deg,#0552a4,#0065bd)}
+.nav-qlink.ql-quest{background:linear-gradient(90deg,#8b0000,#c0392b)}
+
+/* ══ PREVENTIVI ════════════════════════════════════════════════════════════ */
+.preventivi-wrap {
+  display:flex; flex-direction:column; align-items:center;
+  justify-content:flex-start; padding:48px 24px; gap:0;
+}
+.preventivi-card {
+  background:var(--bg2); border:1px solid var(--border-gold);
+  border-radius:18px; padding:48px 40px 52px;
+  width:100%; max-width:700px; text-align:center;
+}
+.preventivi-hdr {
+  font-family:'Cinzel',serif; font-size:21px; font-weight:700;
+  color:var(--gold); letter-spacing:3px; text-transform:uppercase;
+  margin-bottom:10px;
+}
+.preventivi-sep {
+  width:60px; height:2px;
+  background:linear-gradient(90deg,transparent,var(--gold),transparent);
+  margin:0 auto 14px;
+}
+.preventivi-sub {
+  font-size:13px; color:var(--text-muted); letter-spacing:1px; margin-bottom:44px;
+}
+.preventivi-btns { display:flex; gap:32px; flex-wrap:wrap; justify-content:center; }
+.btn-ext {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:16px; width:210px; height:170px;
+  border:none; border-radius:18px; cursor:pointer;
+  text-decoration:none; color:#fff;
+  transition:transform .22s, box-shadow .22s;
+  position:relative; overflow:hidden;
+}
+.btn-ext::after {
+  content:''; position:absolute; inset:0;
+  background:rgba(255,255,255,.09); opacity:0; transition:opacity .2s;
+}
+.btn-ext:hover::after { opacity:1; }
+.btn-ext:hover { transform:translateY(-6px); }
+.btn-ext-icon { font-size:48px; line-height:1; }
+.btn-ext-label { font-family:'Cinzel',serif; font-size:14px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; }
+.btn-prev1 {
+  background:linear-gradient(140deg,#0a6e35,#18b04a,#2ed667);
+  box-shadow:0 8px 28px rgba(30,180,80,.50),0 2px 8px rgba(30,180,80,.30);
+}
+.btn-prev1:hover { box-shadow:0 14px 40px rgba(30,180,80,.70),0 4px 14px rgba(30,180,80,.45); }
+.btn-prev2 {
+  background:linear-gradient(140deg,#085e4e,#12967a,#18c79a);
+  box-shadow:0 8px 28px rgba(20,160,130,.50),0 2px 8px rgba(20,160,130,.30);
+}
+.btn-prev2:hover { box-shadow:0 14px 40px rgba(20,160,130,.70),0 4px 14px rgba(20,160,130,.45); }
+
+/* ══ SIDEBAR THEME TOGGLE ══════════════════════════════════════════════════ */
+.nav-divider { height:1px; background:var(--border-gold); margin:10px 14px; opacity:.5; }
+.nav-theme-row {
+  display:flex; align-items:center; gap:8px;
+  padding:10px 14px; cursor:pointer; user-select:none;
+  border-radius:var(--radius); margin:0 4px;
+  transition:background .18s;
+}
+.nav-theme-row:hover { background:rgba(201,162,39,.10); }
+.nav-theme-label { flex:1; font-size:13px; color:var(--text-muted); }
+.t-pill {
+  width:42px; height:23px; border-radius:12px;
+  background:var(--bg4); border:1px solid var(--border);
+  position:relative; flex-shrink:0; transition:background .3s,border-color .3s;
+}
+.t-pill.on { background:var(--gold); border-color:var(--gold-light); }
+.t-pill-dot {
+  position:absolute; top:3px; left:3px;
+  width:15px; height:15px; border-radius:50%;
+  background:var(--text-muted); transition:all .28s;
+}
+.t-pill.on .t-pill-dot { left:22px; background:#fff; }
+
 * { margin:0; padding:0; box-sizing:border-box; }
 html,body { height:100%; font-family:'Exo 2',sans-serif; background:var(--bg); color:var(--text); overflow-x:hidden; }
 
@@ -1304,6 +1446,14 @@ function doLogout() {
 }
 
 // ===== ADMIN UI =====
+function syncThemeToggle() {
+  const isLight = document.body.classList.contains('theme-light');
+  const pill  = document.getElementById('t-pill');
+  const label = document.getElementById('theme-lbl');
+  if (pill)  { if(isLight) pill.classList.add('on'); else pill.classList.remove('on'); }
+  if (label) label.textContent = isLight ? 'Tema Scuro' : 'Tema Chiaro';
+}
+
 function buildAdminUI() {
   const sidebar = document.getElementById('sidebar');
   sidebar.innerHTML = `
@@ -1322,8 +1472,35 @@ function buildAdminUI() {
     <div class="nav-item" onclick="showAdminPage('adminrules',this)" id="nav-admin-rules">
       <span class="nav-icon">📜</span> Regole Operatori
     </div>
+    <div class="nav-item" onclick="showAdminPage('preventivi',this)" id="nav-preventivi">
+      <span class="nav-icon">📋</span> Preventivi
+    </div>
+    <div class="nav-item" onclick="showAdminPage('reportmese',this)" id="nav-reportmese">
+      <span class="nav-icon">📊</span> Report Mese
+    </div>
+    <div class="nav-divider"></div>
+    <div class="nav-qlinks-label">Accesso Rapido</div>
+    <a class="nav-qlink ql-pec" href="https://login.aruba.it/auth/realms/pec/protocol/openid-connect/auth" target="_blank" rel="noopener">
+      <span class="nav-qlink-icon">✉️</span> PEC
+    </a>
+    <a class="nav-qlink ql-drive" href="https://drive.google.com/drive/folders/1Qjzwq7ngtdT-hmd6pt4oRYf4rV5ZGj__" target="_blank" rel="noopener">
+      <span class="nav-qlink-icon">☁️</span> HUB Drive
+    </a>
+    <a class="nav-qlink ql-trello" href="https://trello.com/b/pPePPnQt/alfa-security" target="_blank" rel="noopener">
+      <span class="nav-qlink-icon">📌</span> Trello
+    </a>
+    <a class="nav-qlink ql-quest" href="https://form.jotform.com/212652413395050" target="_blank" rel="noopener">
+      <span class="nav-qlink-icon">📨</span> Quest-invioCom
+    </a>
+    <div class="nav-divider"></div>
+    <div class="nav-theme-row" onclick="toggleAppTheme()">
+      <span class="nav-icon">💡</span>
+      <span class="nav-theme-label" id="theme-lbl">Tema Chiaro</span>
+      <div class="t-pill" id="t-pill"><div class="t-pill-dot"></div></div>
+    </div>
   `;
   showAdminPage('users', document.getElementById('nav-users'));
+  syncThemeToggle();
 }
 
 function showAdminPage(page, el) {
@@ -1334,6 +1511,8 @@ function showAdminPage(page, el) {
   else if(page==='expenses') renderAdminExpenses(content);
   else if(page==='admininfo') renderAdminInfo(content);
   else if(page==='adminrules') renderAdminRules(content);
+  else if(page==='preventivi') renderAdminPreventivi(content);
+  else if(page==='reportmese') renderAdminReportMese(content);
   else renderAdminComms(content);
 }
 
@@ -3683,8 +3862,81 @@ function sendMessageToAdmin() {
 }
 
 
-// ===== INIT =====
+
+// ══ PREVENTIVI ══════════════════════════════════════════════════════════════
+function renderAdminPreventivi(content) {
+  content.innerHTML = `
+    <div class="preventivi-wrap">
+      <div class="preventivi-card">
+        <div class="preventivi-hdr">Sistema Professionale Preventivi Alfa Security</div>
+        <div class="preventivi-sep"></div>
+        <div class="preventivi-sub">Accedi alle applicazioni esterne del sistema operativo Alfa Security</div>
+        <div class="preventivi-btns">
+          <a class="btn-ext btn-prev1" href="http://72.62.154.189:8080/" target="_blank" rel="noopener">
+            <span class="btn-ext-icon">📄</span>
+            <span class="btn-ext-label">Preventivo</span>
+          </a>
+          <a class="btn-ext btn-prev2" href="http://72.62.154.189/" target="_blank" rel="noopener">
+            <span class="btn-ext-icon">📅</span>
+            <span class="btn-ext-label">Gestione Turni</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ══ THEME TOGGLE ════════════════════════════════════════════════════════════
+function renderAdminReportMese(content) {
+  content.innerHTML = `
+    <div class="report-wrap">
+      <div class="report-card">
+        <div class="report-hdr">Report Mese</div>
+        <div class="report-sep"></div>
+        <div class="report-ai-badge">&#129302; Sistema integrato con A.I. per generare report mensile</div>
+        <div class="report-section-title">Gestione Operatori Sicurezza Mese</div>
+        <div class="report-btns">
+          <a class="btn-report btn-report-green"
+             href="https://form.jotform.com/260493190298060"
+             target="_blank" rel="noopener">
+            <span class="btn-report-icon">&#128203;</span>
+            Inserimento Team / Locali
+          </a>
+          <a class="btn-report btn-report-red"
+             href="https://drive.google.com/drive/folders/1zIJWmANYD-DB4HZehbiwek6NLfLDzWcj?usp=drive_link"
+             target="_blank" rel="noopener">
+            <span class="btn-report-icon">&#128196;</span>
+            Vai al PDF Generato Mese
+          </a>
+          <a class="btn-report btn-report-gold"
+             href="https://eu.jotform.com/tables/260493190298060?from=workspace&amp;target=submissions"
+             target="_blank" rel="noopener">
+            <span class="btn-report-icon">&#9998;&#65039;</span>
+            Modifica Dati di Riepilogo Mese
+          </a>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function toggleAppTheme() {
+  const isLight = document.body.classList.toggle('theme-light');
+  const pill  = document.getElementById('t-pill');
+  const label = document.getElementById('theme-lbl');
+  if (pill)  { if(isLight) pill.classList.add('on'); else pill.classList.remove('on'); }
+  if (label) label.textContent = isLight ? 'Tema Scuro' : 'Tema Chiaro';
+  try { localStorage.setItem('alfa_theme', isLight ? 'light' : 'dark'); } catch(e){}
+}
+
+// ══ INIT =====
 window.addEventListener('load', () => {
+  // restore saved theme
+  try {
+    if(localStorage.getItem('alfa_theme')==='light') {
+      document.body.classList.add('theme-light');
+    }
+  } catch(e){}
   runSplash(() => {
     document.getElementById('splash').style.opacity='0';
     document.getElementById('splash').style.transition='opacity 0.5s';

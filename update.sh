@@ -1,6 +1,6 @@
 #!/bin/bash
 cd /var/www/OperatorApp
-git pull origin main
+GIT_TERMINAL_PROMPT=0 git -c credential.helper= pull https://github.com/alfadet/OperatorApp.git main | grep -q "Already up to date." && exit 0
 docker build -t operatorapp . -q
 docker stop operatorapp
 docker rm operatorapp

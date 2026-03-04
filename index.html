@@ -1196,193 +1196,23 @@ document.addEventListener('click', function(e) {
   }
 });
 
-// ===== DATA STORE (in-memory) =====
-const DB = {
-  urgentMessages: [],
-  expenses: {
-    'usr-001': [
-      {
-        id: 'exp-001a',
-        luogo: 'Centro Commerciale Le Fontane — Treviso',
-        data: '2026-03-01',
-        soloGuida: true,
-        note: 'Servizio di vigilanza notturna, turno 20:00-06:00. Km percorsi: 34.',
-        created_at: '2026-03-01T20:00:00.000Z',
-        pagato: false
-      },
-      {
-        id: 'exp-001b',
-        luogo: 'Cantiere Edile Via Roma 88 — Mestre',
-        data: '2026-03-03',
-        soloGuida: false,
-        note: 'Pattuglia con collega Ferretti. Rientro anticipato per maltempo.',
-        created_at: '2026-03-03T08:00:00.000Z',
-        pagato: false
-      }
-    ],
-    'usr-003': [
-      {
-        id: 'exp-003a',
-        luogo: 'Fiera di Padova — Padiglione B',
-        data: '2026-02-28',
-        soloGuida: true,
-        note: 'Evento aziendale TechExpo 2026. Turno 09:00-18:00. Km: 52.',
-        created_at: '2026-02-28T09:00:00.000Z',
-        pagato: true
-      },
-      {
-        id: 'exp-003b',
-        luogo: 'Aeroporto Marco Polo — Venezia',
-        data: '2026-03-02',
-        soloGuida: true,
-        note: 'Scorta VIP arrivo volo internazionale. Coordinamento con security aeroportuale.',
-        created_at: '2026-03-02T14:30:00.000Z',
-        pagato: false
-      }
-    ]
-  },
-
-  users: [
-    {
-      id: 'admin-001',
-      email: 'Alfadetectives@Gmail.com',
-      password: '1177353',
-      is_admin: true,
-      nome: 'Admin',
-      cognome: 'AD Security'
-    },
-    {
-      id: 'usr-demo',
-      email: 'demo',
-      password: '123',
-      is_admin: false,
-      nome: 'Utente',
-      cognome: 'Demo',
-      telefono: '333 000 0000',
-      indirizzo: 'Via Demo 1, 00100 Roma (RM)',
-      data_nascita: '1990-01-01',
-      codice_fiscale: 'DMOUSR90A01H501Z',
-      created_at: '2026-01-01T00:00:00.000Z'
-    },
-    {
-      id: 'usr-001',
-      email: 'marco.bianchi@email.it',
-      password: 'marco123',
-      is_admin: false,
-      nome: 'Marco',
-      cognome: 'Bianchi',
-      telefono: '347 112 3344',
-      indirizzo: 'Via Garibaldi 14, 30172 Mestre (VE)',
-      data_nascita: '1988-06-15',
-      codice_fiscale: 'BNCMRC88H15L736K',
-      created_at: '2026-01-10T09:00:00.000Z'
-    },
-    {
-      id: 'usr-002',
-      email: 'sara.esposito@email.it',
-      password: 'sara123',
-      is_admin: false,
-      nome: 'Sara',
-      cognome: 'Esposito',
-      telefono: '339 445 6677',
-      indirizzo: 'Corso Italia 7, 35139 Padova (PD)',
-      data_nascita: '1993-11-22',
-      codice_fiscale: 'SPSSRA93S62G224W',
-      created_at: '2026-01-15T10:30:00.000Z'
-    },
-    {
-      id: 'usr-003',
-      email: 'luca.ferri@email.it',
-      password: 'luca123',
-      is_admin: false,
-      nome: 'Luca',
-      cognome: 'Ferri',
-      telefono: '333 887 2211',
-      indirizzo: 'Via Venezia 32, 31100 Treviso (TV)',
-      data_nascita: '1985-03-08',
-      codice_fiscale: 'FRRLCU85C08L407Z',
-      created_at: '2026-01-20T08:15:00.000Z'
-    },
-    {
-      id: 'usr-004',
-      email: 'giulia.romano@email.it',
-      password: 'giulia123',
-      is_admin: false,
-      nome: 'Giulia',
-      cognome: 'Romano',
-      telefono: '348 990 5544',
-      indirizzo: 'Via Nazionale 5, 30026 Portogruaro (VE)',
-      data_nascita: '1996-07-30',
-      codice_fiscale: 'RMNGLU96L70G914P',
-      created_at: '2026-02-01T11:00:00.000Z'
-    },
-    {
-      id: 'usr-005',
-      email: 'antonio.greco@email.it',
-      password: 'antonio123',
-      is_admin: false,
-      nome: 'Antonio',
-      cognome: 'Greco',
-      telefono: '366 221 8899',
-      indirizzo: 'Via Po 21, 45100 Rovigo (RO)',
-      data_nascita: '1979-12-03',
-      codice_fiscale: 'GRCNTN79T03H620B',
-      created_at: '2026-02-05T14:45:00.000Z'
+// Helper API
+let authToken = null;
+async function apiFetch(path, opts = {}) {
+  const res = await fetch('/api' + path, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(authToken ? { 'Authorization': 'Bearer ' + authToken } : {}),
+      ...(opts.headers || {})
     }
-  ],
-
-  messages: [
-    {
-      id: 'msg-001',
-      testo: 'Riunione operativa obbligatoria mercoledì 5 marzo ore 10:00 presso la sede. Portare divisa completa e tesserino.',
-      nome_file: null, mime_type: null, file_data: null,
-      is_broadcast: true, target_user_id: null,
-      created_at: '2026-03-01T08:00:00.000Z',
-      read_by: ['usr-002', 'usr-003']
-    },
-    {
-      id: 'msg-002',
-      testo: 'Marco, ricordati di consegnare il rapporto di servizio del 1 marzo entro domani mattina. Grazie.',
-      nome_file: null, mime_type: null, file_data: null,
-      is_broadcast: false, target_user_id: 'usr-001',
-      created_at: '2026-03-02T09:30:00.000Z',
-      read_by: []
-    },
-    {
-      id: 'msg-003',
-      testo: 'Aggiornamento turni marzo: controllate il nuovo calendario sul portale. Eventuali cambi vanno comunicati entro venerdì.',
-      nome_file: null, mime_type: null, file_data: null,
-      is_broadcast: true, target_user_id: null,
-      created_at: '2026-03-02T15:00:00.000Z',
-      read_by: ['usr-001']
-    }
-  ],
-
-  infoItems: [
-    { id: 'info-001', text: 'Orari ufficio: Lunedi-Venerdi 09:00-18:00. Sabato 09:00-13:00.', expanded: false },
-    { id: 'info-002', text: "Per richiedere ferie o permessi contattare l'ufficio con almeno 7 giorni di anticipo.", expanded: false },
-    { id: 'info-003', text: 'In caso di assenza improvvisa avvisare entro le 06:00 del giorno stesso al numero: 333 000 1234.', expanded: false },
-    { id: 'info-004', text: 'Il tesserino di riconoscimento deve essere sempre indossato in modo visibile durante il servizio.', expanded: false },
-    { id: 'info-005', text: 'Le divise devono essere sempre pulite e in ordine. Vietato presentarsi in servizio senza divisa completa.', expanded: false }
-  ],
-  rules: [
-    { id: 'rule-001', title: 'Codice di Condotta', text: "L'operatore si impegna a rispettare il codice di condotta aziendale in ogni circostanza.", pdfData: null, pdfName: null },
-    { id: 'rule-002', title: 'Uso Cellulare',     text: "E' vietato l'uso del cellulare personale durante le ore di servizio attivo salvo emergenze.", pdfData: null, pdfName: null },
-    { id: 'rule-003', title: 'Gestione Incidenti', text: 'Qualsiasi incidente o anomalia deve essere comunicata immediatamente al responsabile di turno.', pdfData: null, pdfName: null },
-    { id: 'rule-004', title: 'Riservatezza',       text: "L'operatore si impegna a mantenere la riservatezza su tutte le informazioni relative ai clienti.", pdfData: null, pdfName: null },
-    { id: 'rule-005', title: 'Uso Divisa e Tesserino', text: "L'uso improprio della divisa o del tesserino aziendale è causa di immediata sospensione.", pdfData: null, pdfName: null }
-  ],
-  rulesLog: [],          // { id, userId, userName, ruleId, ruleText, decision, timestamp }
-  incomingMessages: [], // { id, fromUserId, fromName, fromEmail, testo, created_at, reply, replyAt }
-  documents: {
-    'usr-demo': {},
-    'usr-001': {},
-    'usr-002': {},
-    'usr-003': {},
-    'usr-004': {},
-    'usr-005': {}
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err);
   }
-};
+  return res.json();
+}
 
 let currentUser = null;
 
@@ -1443,34 +1273,36 @@ function showRegister() {
   document.getElementById('register-box').style.display='block';
 }
 
-function doLogin() {
+async function doLogin() {
   const email = document.getElementById('login-email').value.trim();
   const pw = document.getElementById('login-password').value;
   const err = document.getElementById('login-error');
   if(!email||!pw) { err.textContent='Compila tutti i campi.'; err.classList.add('show'); return; }
-  const user = DB.users.find(u => u.email.toLowerCase()===email.toLowerCase() && u.password===pw);
-  if(!user) { err.textContent='Email o password non corretti.'; err.classList.add('show'); return; }
-  err.classList.remove('show');
-  loginAs(user);
+  try {
+    const data = await apiFetch('/auth/login', { method:'POST', body: JSON.stringify({email, password: pw}) });
+    authToken = data.token;
+    err.classList.remove('show');
+    loginAs(data.user);
+  } catch(e) {
+    err.textContent = 'Email o password non corretti.';
+    err.classList.add('show');
+  }
 }
 
-function doRegister() {
+async function doRegister() {
   const email = document.getElementById('reg-email').value.trim();
   const pw = document.getElementById('reg-password').value;
   const err = document.getElementById('reg-error');
   if(!email||!pw) { err.textContent='Compila tutti i campi.'; err.classList.add('show'); return; }
-  if(DB.users.find(u => u.email.toLowerCase()===email.toLowerCase())) {
-    err.textContent='Email già registrata.'; err.classList.add('show'); return;
+  try {
+    const data = await apiFetch('/auth/register', { method:'POST', body: JSON.stringify({email, password: pw}) });
+    authToken = data.token;
+    err.classList.remove('show');
+    loginAs(data.user);
+  } catch(e) {
+    err.textContent = e.message.includes('già') ? 'Email già registrata.' : 'Errore durante la registrazione.';
+    err.classList.add('show');
   }
-  const newUser = {
-    id: uuid(), email, password: pw, is_admin: false,
-    nome:'', cognome:'', telefono:'', indirizzo:'', data_nascita:'', codice_fiscale:'',
-    created_at: new Date().toISOString()
-  };
-  DB.users.push(newUser);
-  DB.documents[newUser.id] = {};
-  err.classList.remove('show');
-  loginAs(newUser);
 }
 
 function loginAs(user) {
@@ -1483,12 +1315,12 @@ function loginAs(user) {
     buildAdminUI();
   } else {
     document.getElementById('topbar-title').textContent = 'Dashboard Operatore';
-    if(!DB.documents[user.id]) DB.documents[user.id] = {};
     buildUserUI();
   }
 }
 
 function doLogout() {
+  authToken = null;
   currentUser = null;
   document.getElementById('main-layout').style.display = 'none';
   document.getElementById('auth-screen').style.display = 'flex';
@@ -1568,20 +1400,19 @@ function showAdminPage(page, el) {
   else renderAdminComms(content);
 }
 
-function renderAdminUsers(content, searchQ) {
-  const allUsers = DB.users.filter(u => !u.is_admin);
-  const q = (searchQ||'').toLowerCase().trim();
-  const users = q ? allUsers.filter(u =>
-    `${u.nome||''} ${u.cognome||''} ${u.email}`.toLowerCase().includes(q)
-  ) : allUsers;
-  const stats = allUsers.length;
-  const docsCount = allUsers.reduce((a,u) => a + Object.keys(DB.documents[u.id]||{}).length, 0);
-  const msgsCount = DB.messages.length;
-  content.innerHTML = `
+async function renderAdminUsers(content, searchQ) {
+  try {
+    const allUsers = await apiFetch('/users');
+    const q = (searchQ||'').toLowerCase().trim();
+    const users = q ? allUsers.filter(u =>
+      `${u.nome||''} ${u.cognome||''} ${u.email}`.toLowerCase().includes(q)
+    ) : allUsers;
+    const stats = allUsers.length;
+    content.innerHTML = `
     <div class="stats-grid">
       <div class="stat-card"><div class="stat-num">${stats}</div><div class="stat-label">Operatori</div></div>
-      <div class="stat-card"><div class="stat-num">${docsCount}</div><div class="stat-label">Documenti</div></div>
-      <div class="stat-card"><div class="stat-num">${msgsCount}</div><div class="stat-label">Messaggi</div></div>
+      <div class="stat-card"><div class="stat-num">—</div><div class="stat-label">Documenti</div></div>
+      <div class="stat-card"><div class="stat-num">—</div><div class="stat-label">Messaggi</div></div>
     </div>
     <div class="card">
       <div class="card-title">👥 Operatori Registrati</div>
@@ -1622,12 +1453,17 @@ function renderAdminUsers(content, searchQ) {
       </div>`}
     </div>
   `;
+  } catch(e) { content.innerHTML = `<div class="empty-state">Errore caricamento utenti</div>`; }
 }
 
-function adminViewUser(id) {
-  const u = DB.users.find(x=>x.id===id);
-  const docs = DB.documents[id]||{};
-  const userExpenses = (DB.expenses[id]||[]).slice().sort((a,b)=>new Date(b.data)-new Date(a.data));
+async function adminViewUser(id) {
+  try {
+    const [u, docs, expenses] = await Promise.all([
+      apiFetch(`/users/${id}`),
+      apiFetch(`/documents/${id}`),
+      apiFetch(`/expenses/${id}`)
+    ]);
+    const userExpenses = expenses.slice().sort((a,b) => new Date(b.data) - new Date(a.data));
   const docTypes = [
     {k:'foto_selfie',label:'📷 Foto Selfie'},
     {k:"carta_identita",label:"🪪 Carta d'Identità"},
@@ -1692,11 +1528,13 @@ function adminViewUser(id) {
           </div>`}
     </div>
   `);
+  } catch(e) { showToast('Errore caricamento profilo', 'error'); }
 }
 
-function adminEditUser(id) {
-  const u = DB.users.find(x=>x.id===id);
-  openModal(`
+async function adminEditUser(id) {
+  try {
+    const u = await apiFetch(`/users/${id}`);
+    openModal(`
     <div class="modal-title">
       <span>✏️ Modifica Operatore</span>
       <span class="modal-close" onclick="closeModalDirect()">✕</span>
@@ -1708,31 +1546,36 @@ function adminEditUser(id) {
       <div class="field-group"><div class="field-label">Telefono</div><input class="field-input" id="edit-tel" value="${u.telefono||''}"></div>
       <div class="field-group"><div class="field-label">Codice Fiscale</div><input class="field-input" id="edit-cf" value="${u.codice_fiscale||''}"></div>
       <div class="field-group full"><div class="field-label">Indirizzo</div><input class="field-input" id="edit-ind" value="${u.indirizzo||''}"></div>
-      <div class="field-group"><div class="field-label">Data Nascita</div><input class="field-input" type="date" id="edit-dn" value="${u.data_nascita||''}"></div>
+      <div class="field-group"><div class="field-label">Data Nascita</div><input class="field-input" type="date" id="edit-dn" value="${u.data_nascita ? u.data_nascita.substring(0,10) : ''}"></div>
     </div>
     <div class="btn-row" style="margin-top:20px">
       <button class="btn-sm btn-primary" onclick="adminSaveUser('${id}')">💾 Salva</button>
       <button class="btn-sm btn-secondary" onclick="closeModalDirect()">Annulla</button>
     </div>
   `);
+  } catch(e) { showToast('Errore', 'error'); }
 }
 
-function adminSaveUser(id) {
-  const u = DB.users.find(x=>x.id===id);
-  u.nome = document.getElementById('edit-nome').value;
-  u.cognome = document.getElementById('edit-cognome').value;
-  u.telefono = document.getElementById('edit-tel').value;
-  u.codice_fiscale = document.getElementById('edit-cf').value;
-  u.indirizzo = document.getElementById('edit-ind').value;
-  u.data_nascita = document.getElementById('edit-dn').value;
-  closeModalDirect();
-  renderAdminUsers(document.getElementById('content'),'');
-  showToast('Dati operatore aggiornati ✓');
+async function adminSaveUser(id) {
+  const nome = document.getElementById('edit-nome').value;
+  const cognome = document.getElementById('edit-cognome').value;
+  const email = document.getElementById('edit-email').value;
+  const telefono = document.getElementById('edit-tel').value;
+  const codice_fiscale = document.getElementById('edit-cf').value;
+  const indirizzo = document.getElementById('edit-ind').value;
+  const data_nascita = document.getElementById('edit-dn').value;
+  try {
+    await apiFetch(`/users/${id}`, { method:'PUT', body: JSON.stringify({nome, cognome, email, telefono, indirizzo, data_nascita, codice_fiscale}) });
+    closeModalDirect();
+    showToast('Dati operatore aggiornati ✓');
+    renderAdminUsers(document.getElementById('content'),'');
+  } catch(e) { showToast('Errore salvataggio', 'error'); }
 }
 
-function adminDeleteUser(id) {
-  const u = DB.users.find(x=>x.id===id);
-  openModal(`
+async function adminDeleteUser(id) {
+  try {
+    const u = await apiFetch(`/users/${id}`);
+    openModal(`
     <div class="modal-title"><span>🗑 Elimina Operatore</span><span class="modal-close" onclick="closeModalDirect()">✕</span></div>
     <p style="color:var(--text-muted);font-size:14px;line-height:1.6;margin-bottom:20px">
       Stai per eliminare l'operatore <strong style="color:var(--text)">${u.email}</strong>.<br>
@@ -1743,21 +1586,24 @@ function adminDeleteUser(id) {
       <button class="btn-sm btn-secondary" onclick="closeModalDirect()">Annulla</button>
     </div>
   `);
+  } catch(e) { showToast('Errore', 'error'); }
 }
 
-function confirmDeleteUser(id) {
-  DB.users = DB.users.filter(u=>u.id!==id);
-  delete DB.documents[id];
-  DB.messages = DB.messages.filter(m=>m.target_user_id!==id);
-  closeModalDirect();
-  renderAdminUsers(document.getElementById('content'),'');
-  showToast('Operatore eliminato', 'error');
+async function confirmDeleteUser(id) {
+  try {
+    await apiFetch(`/users/${id}`, { method:'DELETE' });
+    closeModalDirect();
+    showToast('Operatore eliminato');
+    renderAdminUsers(document.getElementById('content'),'');
+  } catch(e) { showToast('Errore eliminazione', 'error'); }
 }
 
 // ===== URGENT MESSAGES =====
-function getActiveUrgentMessages() {
-  const now = new Date();
-  return DB.urgentMessages.filter(m => new Date(m.expires_at) > now);
+async function getActiveUrgentMessages() {
+  try {
+    const all = await apiFetch('/urgent-messages');
+    return all.filter(m => new Date(m.expires_at) > new Date());
+  } catch { return []; }
 }
 
 function formatCountdown(expires_at) {
@@ -1769,24 +1615,25 @@ function formatCountdown(expires_at) {
   return `${m} minuti rimanenti`;
 }
 
-function sendUrgentMessage() {
+async function sendUrgentMessage() {
   const testo = document.getElementById('urgent-text').value.trim();
   const hours = parseFloat(document.getElementById('urgent-duration').value);
   if(!testo) { showToast('Scrivi il messaggio urgente', 'error'); return; }
   const now = new Date();
   const expires = new Date(now.getTime() + hours * 3600000);
-  DB.urgentMessages.push({
-    id: uuid(), testo, duration_hours: hours,
-    created_at: now.toISOString(), expires_at: expires.toISOString(), edited: false
-  });
-  document.getElementById('urgent-text').value = '';
-  renderAdminComms(document.getElementById('content'));
-  showToast('Messaggio urgente pubblicato ✓');
+  try {
+    await apiFetch('/urgent-messages', { method:'POST', body: JSON.stringify({testo, expires_at: expires.toISOString(), duration_hours: hours}) });
+    document.getElementById('urgent-text').value = '';
+    showToast('Messaggio urgente pubblicato ✓');
+    renderAdminComms(document.getElementById('content'));
+  } catch(e) { showToast('Errore', 'error'); }
 }
 
-function editUrgentMessage(id) {
-  const msg = DB.urgentMessages.find(m => m.id === id);
-  if(!msg) return;
+async function editUrgentMessage(id) {
+  try {
+    const allMsgs = await apiFetch('/urgent-messages');
+    const msg = allMsgs.find(m => m.id === id);
+    if(!msg) return;
   openModal(`
     <div class="modal-title">
       <span>✏️ Modifica Messaggio Urgente</span>
@@ -1811,21 +1658,20 @@ function editUrgentMessage(id) {
       <button class="btn-sm btn-secondary" onclick="closeModalDirect()">Annulla</button>
     </div>
   `);
+  } catch(e) { showToast('Errore', 'error'); }
 }
 
-function saveUrgentEdit(id) {
-  const msg = DB.urgentMessages.find(m => m.id === id);
-  if(!msg) return;
+async function saveUrgentEdit(id) {
   const testo = document.getElementById('edit-urgent-text').value.trim();
   const hours = parseFloat(document.getElementById('edit-urgent-dur').value);
   if(!testo) { showToast('Il testo non può essere vuoto', 'error'); return; }
-  msg.testo = testo;
-  msg.duration_hours = hours;
-  msg.expires_at = new Date(new Date().getTime() + hours * 3600000).toISOString();
-  msg.edited = true;
-  closeModalDirect();
-  renderAdminComms(document.getElementById('content'));
-  showToast('Messaggio urgente aggiornato ✓');
+  const expires_at = new Date(new Date().getTime() + hours * 3600000).toISOString();
+  try {
+    await apiFetch(`/urgent-messages/${id}`, { method:'PUT', body: JSON.stringify({testo, duration_hours: hours, expires_at}) });
+    closeModalDirect();
+    showToast('Messaggio urgente aggiornato ✓');
+    renderAdminComms(document.getElementById('content'));
+  } catch(e) { showToast('Errore', 'error'); }
 }
 
 function deleteUrgentMessage(id) {
@@ -1845,17 +1691,25 @@ function deleteUrgentMessage(id) {
   `);
 }
 
-function confirmDeleteUrgent(id) {
-  DB.urgentMessages = DB.urgentMessages.filter(m => m.id !== id);
-  closeModalDirect();
-  renderAdminComms(document.getElementById('content'));
-  showToast('Messaggio urgente eliminato', 'error');
+async function confirmDeleteUrgent(id) {
+  try {
+    await apiFetch(`/urgent-messages/${id}`, { method:'DELETE' });
+    closeModalDirect();
+    showToast('Messaggio urgente eliminato', 'error');
+    renderAdminComms(document.getElementById('content'));
+  } catch(e) { showToast('Errore eliminazione', 'error'); }
 }
 
-function renderAdminComms(content) {
-  const users = DB.users.filter(u=>!u.is_admin);
-  const activeUrgent = getActiveUrgentMessages();
-  const allUrgent = DB.urgentMessages.slice().reverse();
+async function renderAdminComms(content) {
+  try {
+  const [users, messages, incoming, urgentAll] = await Promise.all([
+    apiFetch('/users'),
+    apiFetch('/messages'),
+    apiFetch('/incoming-messages'),
+    apiFetch('/urgent-messages')
+  ]);
+  const activeUrgent = urgentAll.filter(m => new Date(m.expires_at) > new Date());
+  const allUrgent = urgentAll.slice().reverse();
   content.innerHTML = `
 
     <!-- URGENT MESSAGES SECTION -->
@@ -1892,7 +1746,7 @@ function renderAdminComms(content) {
 
       <div class="comm-section">
         <div class="section-label" style="color:#f1c40f">
-          📋 Messaggi Urgenti Attivi (${activeUrgent.length}) / Totali (${DB.urgentMessages.length})
+          📋 Messaggi Urgenti Attivi (${activeUrgent.length}) / Totali (${urgentAll.length})
         </div>
         ${allUrgent.length === 0 ? '<div style="color:var(--text-muted);font-size:13px">Nessun messaggio urgente</div>' : `
         <div class="urgent-admin-list">
@@ -1961,12 +1815,12 @@ function renderAdminComms(content) {
       </div>
       <div style="height:1px;background:var(--border);margin:24px 0"></div>
       <div class="comm-section">
-        <div class="section-label">📋 Messaggi inviati (${DB.messages.length})</div>
-        ${DB.messages.length===0 ? '<div style="color:var(--text-muted);font-size:13px">Nessun messaggio inviato</div>' :
-          `<div class="msg-feed">${DB.messages.slice().reverse().map(m=>`
+        <div class="section-label">📋 Messaggi inviati (${messages.length})</div>
+        ${messages.length===0 ? '<div style="color:var(--text-muted);font-size:13px">Nessun messaggio inviato</div>' :
+          `<div class="msg-feed">${messages.slice().reverse().map(m=>`
             <div class="msg-item">
               <div class="msg-meta">
-                ${m.is_broadcast ? '📢 Broadcast' : `✉️ A: ${DB.users.find(u=>u.id===m.target_user_id)?.email||'Utente rimosso'}`}
+                ${m.is_broadcast ? '📢 Broadcast' : `✉️ A: ${users.find(u=>u.id===m.target_user_id)?.email||'Utente rimosso'}`}
                 — ${fmt(m.created_at)}
               </div>
               <div class="msg-text">${m.testo||''}</div>
@@ -1980,27 +1834,27 @@ function renderAdminComms(content) {
     <div class="card" style="border-color:rgba(52,152,219,0.4)">
       <div class="card-title" style="border-bottom-color:rgba(52,152,219,0.3)">
         📨 Messaggi Arrivati dagli Operatori
-        ${DB.incomingMessages.length > 0 ? `<span style="font-size:11px;background:rgba(52,152,219,0.15);color:#3498db;border:1px solid rgba(52,152,219,0.3);padding:2px 10px;border-radius:10px;margin-left:10px">${DB.incomingMessages.length}</span>` : ''}
+        ${incoming.length > 0 ? `<span style="font-size:11px;background:rgba(52,152,219,0.15);color:#3498db;border:1px solid rgba(52,152,219,0.3);padding:2px 10px;border-radius:10px;margin-left:10px">${incoming.length}</span>` : ''}
       </div>
-      ${DB.incomingMessages.length === 0
+      ${incoming.length === 0
         ? '<div style="color:var(--text-muted);font-size:13px;padding:10px 0">Nessun messaggio ricevuto dagli operatori</div>'
-        : DB.incomingMessages.slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).map(m => `
+        : incoming.slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).map(m => `
           <div class="incoming-msg-item">
             <div class="incoming-msg-header">
               <div class="incoming-from">
-                👤 <strong>${m.fromName}</strong>
-                <span style="font-size:11px;color:var(--text-muted);font-weight:400">${m.fromEmail}</span>
+                👤 <strong>${m.fromName||m.from_name||''}</strong>
+                <span style="font-size:11px;color:var(--text-muted);font-weight:400">${m.fromEmail||m.from_email||''}</span>
               </div>
               <div class="incoming-time">${fmt(m.created_at)}</div>
             </div>
             <div class="incoming-testo">${m.testo}</div>
             <div class="incoming-reply-wrap">
               ${m.reply
-                ? `<div class="incoming-reply-sent">✅ Risposta inviata il ${fmt(m.replyAt)}: "${m.reply}"</div>
+                ? `<div class="incoming-reply-sent">✅ Risposta inviata il ${fmt(m.replyAt||m.reply_at)}: "${m.reply}"</div>
                    <button class="btn-sm btn-secondary" style="font-size:11px" onclick="replyToOperator('${m.id}')">✏️ Modifica risposta</button>`
                 : `<div style="display:flex;gap:8px;align-items:flex-end">
                     <div style="flex:1">
-                      <div class="field-label" style="margin-bottom:6px">Rispondi a ${m.fromName}</div>
+                      <div class="field-label" style="margin-bottom:6px">Rispondi a ${m.fromName||m.from_name||''}</div>
                       <textarea class="field-input" id="reply-${m.id}" style="min-height:60px"
                         placeholder="Scrivi la tua risposta..."></textarea>
                     </div>
@@ -2011,6 +1865,7 @@ function renderAdminComms(content) {
           </div>`).join('')}
     </div>
   `;
+  } catch(e) { content.innerHTML = `<div class="empty-state">Errore caricamento comunicazioni</div>`; }
 }
 
 async function fileToBase64(file) {
@@ -2033,11 +1888,13 @@ async function sendBroadcast() {
     file_data = await fileToBase64(f);
     nome_file = f.name; mime_type = f.type;
   }
-  DB.messages.push({ id:uuid(), testo, nome_file, mime_type, file_data, is_broadcast:true, target_user_id:null, created_at:new Date().toISOString() });
-  document.getElementById('broad-text').value='';
-  fileEl.value='';
-  renderAdminComms(document.getElementById('content'));
-  showToast('Messaggio inviato a tutti gli operatori ✓');
+  try {
+    await apiFetch('/messages', { method:'POST', body: JSON.stringify({testo, is_broadcast: true, file_data, nome_file, mime_type}) });
+    document.getElementById('broad-text').value='';
+    fileEl.value='';
+    showToast('Messaggio inviato a tutti gli operatori ✓');
+    renderAdminComms(document.getElementById('content'));
+  } catch(e) { showToast('Errore invio', 'error'); }
 }
 
 async function sendSingle() {
@@ -2053,18 +1910,32 @@ async function sendSingle() {
     file_data = await fileToBase64(f);
     nome_file = f.name; mime_type = f.type;
   }
-  DB.messages.push({ id:uuid(), testo, nome_file, mime_type, file_data, is_broadcast:false, target_user_id:uid, created_at:new Date().toISOString() });
-  document.getElementById('single-text').value='';
-  fileEl.value='';
-  renderAdminComms(document.getElementById('content'));
-  showToast('Messaggio inviato ✓');
+  try {
+    await apiFetch('/messages', { method:'POST', body: JSON.stringify({testo, is_broadcast: false, target_user_id: uid, file_data, nome_file, mime_type}) });
+    document.getElementById('single-text').value='';
+    fileEl.value='';
+    showToast('Messaggio inviato ✓');
+    renderAdminComms(document.getElementById('content'));
+  } catch(e) { showToast('Errore invio', 'error'); }
 }
 
 // ===== USER UI =====
-function buildUserUI() {
+async function buildUserUI() {
   const u = currentUser;
   const sidebar = document.getElementById('sidebar');
-  const unread = getUserUnreadCount();
+  let unread = 0;
+  let rulesPending = 0;
+  try {
+    const msgs = await apiFetch('/messages');
+    unread = msgs.filter(m => {
+      if(!m.is_broadcast && m.target_user_id !== u.id) return false;
+      return !m.read_by?.includes(u.id);
+    }).length;
+  } catch(e) {}
+  try {
+    const [rules, rulesLog] = await Promise.all([apiFetch('/rules'), apiFetch('/rules-log')]);
+    rulesPending = rules.filter(r => !rulesLog.find(l => l.userId === u.id && l.ruleId === r.id)).length;
+  } catch(e) {}
   sidebar.innerHTML = `
     <div class="nav-item active" onclick="showUserPage('dashboard',this)"><span class="nav-icon">🏠</span> Dashboard</div>
     <div class="nav-item" onclick="showUserPage('profile',this)"><span class="nav-icon">👤</span> Dati Personali</div>
@@ -2077,18 +1948,21 @@ function buildUserUI() {
     <div class="nav-item" onclick="showUserPage('info',this)"><span class="nav-icon">ℹ️</span> Info</div>
     <div class="nav-item" onclick="showUserPage('rules',this)" id="nav-rules">
       <span class="nav-icon">📜</span> Accettazione Regole
-      ${getRulesPendingCount()>0?`<span class="nav-badge">${getRulesPendingCount()}</span>`:''}
+      ${rulesPending>0?`<span class="nav-badge">${rulesPending}</span>`:''}
     </div>
   `;
   showUserPage('dashboard', sidebar.querySelector('.nav-item'));
 }
 
-function getUserUnreadCount() {
+async function getUserUnreadCount() {
   const u = currentUser;
-  return DB.messages.filter(m => {
-    if(!m.is_broadcast && m.target_user_id !== u.id) return false;
-    return !m.read_by?.includes(u.id);
-  }).length;
+  try {
+    const msgs = await apiFetch('/messages');
+    return msgs.filter(m => {
+      if(!m.is_broadcast && m.target_user_id !== u.id) return false;
+      return !m.read_by?.includes(u.id);
+    }).length;
+  } catch(e) { return 0; }
 }
 
 function showUserPage(page, el) {
@@ -2104,12 +1978,30 @@ function showUserPage(page, el) {
   else if(page==='rules') renderUserRules(content);
 }
 
-function renderUserDashboard(content) {
+async function renderUserDashboard(content) {
   const u = currentUser;
-  const unread = getUserUnreadCount();
-  const docs = DB.documents[u.id]||{};
-  const docsUploaded = Object.keys(docs).length;
-  const activeUrgent = getActiveUrgentMessages();
+  let unread = 0, docsUploaded = 0, rulesPending = 0;
+  let activeUrgent = [], unreadMsgs = [], sentToAdmin = [];
+  try {
+    const [msgs, docs, urgentAll, rules, rulesLog, incomingAll] = await Promise.all([
+      apiFetch('/messages'),
+      apiFetch(`/documents/${u.id}`),
+      apiFetch('/urgent-messages'),
+      apiFetch('/rules'),
+      apiFetch('/rules-log'),
+      apiFetch('/incoming-messages')
+    ]);
+    activeUrgent = urgentAll.filter(m => new Date(m.expires_at) > new Date());
+    docsUploaded = Object.keys(docs).length;
+    unreadMsgs = msgs.filter(m => {
+      if(!m.is_broadcast && m.target_user_id !== u.id) return false;
+      return !m.read_by?.includes(u.id);
+    });
+    unread = unreadMsgs.length;
+    rulesPending = rules.filter(r => !rulesLog.find(l => (l.userId||l.user_id) === u.id && (l.ruleId||l.rule_id) === r.id)).length;
+    sentToAdmin = incomingAll.filter(m => (m.fromUserId||m.from_user_id) === u.id)
+      .slice().sort((a,b) => new Date(b.created_at)-new Date(a.created_at)).slice(0,3);
+  } catch(e) {}
 
   content.innerHTML = `
     <!-- URGENT MESSAGES — always on top, full width -->
@@ -2127,7 +2019,7 @@ function renderUserDashboard(content) {
         </div>`).join('')}
     </div>` : ''}
 
-    ${getRulesPendingCount()>0 ? `
+    ${rulesPending>0 ? `
     <div style="background:linear-gradient(135deg,rgba(231,76,60,0.12),rgba(192,57,43,0.06));
       border:1px solid rgba(231,76,60,0.4);border-left:5px solid #e74c3c;
       border-radius:10px;padding:16px 20px;margin-bottom:16px;
@@ -2140,7 +2032,7 @@ function renderUserDashboard(content) {
         </div>
         <div style="font-size:13px;color:#e8a09a;margin-top:4px;line-height:1.6">
           Per attivare il sistema vai nella sezione <strong>Info</strong> e leggi e accetta quanto scritto.<br>
-          Hai <strong>${getRulesPendingCount()} regole</strong> in attesa di risposta. Clicca qui per procedere.
+          Hai <strong>${rulesPending} regole</strong> in attesa di risposta. Clicca qui per procedere.
         </div>
       </div>
     </div>` : ''}
@@ -2166,10 +2058,7 @@ function renderUserDashboard(content) {
     <div class="card" style="border-color:rgba(201,162,39,0.4)">
       <div class="card-title">📬 Ultimi Messaggi Non Letti</div>
       <div class="msg-feed">
-        ${DB.messages.filter(m=>{
-          if(!m.is_broadcast && m.target_user_id!==u.id) return false;
-          return !m.read_by?.includes(u.id);
-        }).slice(-3).map(m=>`
+        ${unreadMsgs.slice(-3).map(m=>`
           <div class="msg-item unread">
             <div class="msg-meta">${m.is_broadcast?'📢 Broadcast':'✉️ Personale'} — ${fmt(m.created_at)}</div>
             <div class="msg-text">${m.testo||''}</div>
@@ -2193,19 +2082,17 @@ function renderUserDashboard(content) {
         </button>
       </div>
 
-      ${DB.incomingMessages.filter(m=>m.fromUserId===u.id).length > 0 ? `
+      ${sentToAdmin.length > 0 ? `
       <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
         <div style="font-size:11px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;margin-bottom:12px">
           📋 I tuoi messaggi inviati
         </div>
-        ${DB.incomingMessages.filter(m=>m.fromUserId===u.id)
-          .slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))
-          .slice(0,3).map(m=>`
+        ${sentToAdmin.map(m=>`
           <div class="user-sent-msg-item">
             <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">${fmt(m.created_at)}</div>
             <div style="font-size:13px;color:var(--text)">${m.testo}</div>
             ${m.reply ? `<div class="user-sent-reply">
-              💬 Risposta Admin (${fmt(m.replyAt)}): ${m.reply}
+              💬 Risposta Admin (${fmt(m.replyAt||m.reply_at)}): ${m.reply}
             </div>` : '<div style="font-size:11px;color:var(--text-muted);margin-top:6px;font-style:italic">⏳ In attesa di risposta...</div>'}
           </div>`).join('')}
       </div>` : ''}
@@ -2278,20 +2165,25 @@ function enableProfileEdit() {
   document.getElementById('btn-cancel-profile').style.display='inline-flex';
 }
 
-function saveProfile() {
-  const u = currentUser;
-  u.nome = document.getElementById('p-nome').value;
-  u.cognome = document.getElementById('p-cognome').value;
-  u.telefono = document.getElementById('p-tel').value;
-  u.codice_fiscale = document.getElementById('p-cf').value;
-  u.indirizzo = document.getElementById('p-ind').value;
-  u.data_nascita = document.getElementById('p-dn').value;
-  renderUserProfile(document.getElementById('content'));
-  showToast('Profilo aggiornato ✓');
-  // Update welcome
-  buildUserUI();
-  showUserPage('profile', null);
-  document.querySelectorAll('.nav-item')[1].classList.add('active');
+async function saveProfile() {
+  const nome = document.getElementById('p-nome').value;
+  const cognome = document.getElementById('p-cognome').value;
+  const telefono = document.getElementById('p-tel').value;
+  const codice_fiscale = document.getElementById('p-cf').value;
+  const indirizzo = document.getElementById('p-ind').value;
+  const data_nascita = document.getElementById('p-dn').value;
+  try {
+    const updated = await apiFetch(`/users/${currentUser.id}`, {
+      method:'PUT',
+      body: JSON.stringify({nome, cognome, email: currentUser.email, telefono, indirizzo, data_nascita, codice_fiscale})
+    });
+    currentUser = {...currentUser, ...updated};
+    showToast('Profilo aggiornato ✓');
+    renderUserProfile(document.getElementById('content'));
+    buildUserUI();
+    showUserPage('profile', null);
+    document.querySelectorAll('.nav-item')[1]?.classList.add('active');
+  } catch(e) { showToast('Errore aggiornamento', 'error'); }
 }
 
 // ===== DOCUMENTS =====
@@ -2306,13 +2198,15 @@ const DOC_TYPES = [
   {k:'tesserino_asc', label:'Tesserino ASC', icon:'🪪', required:false}
 ];
 
-function renderUserDocuments(content) {
+async function renderUserDocuments(content) {
+  try {
+    const docs = await apiFetch(`/documents/${currentUser.id}`);
   content.innerHTML = `
     <div class="card">
       <div class="card-title">📁 Documenti Personali</div>
       <div id="doc-error" class="error-banner"></div>
       <div class="doc-grid" id="doc-grid">
-        ${DOC_TYPES.map(d => renderDocSlot(d)).join('')}
+        ${DOC_TYPES.map(d => renderDocSlot(d, docs)).join('')}
       </div>
       <div class="doc-legend">
         <div class="doc-legend-title">📋 Legenda Documenti</div>
@@ -2329,10 +2223,11 @@ function renderUserDocuments(content) {
       </div>
     </div>
   `;
+  } catch(e) { content.innerHTML = `<div class="empty-state">Errore caricamento documenti</div>`; }
 }
 
-function renderDocSlot(d) {
-  const docs = DB.documents[currentUser.id]||{};
+function renderDocSlot(d, docs) {
+  docs = docs || {};
   const doc = docs[d.k];
   const isImg = doc && doc.mime_type && doc.mime_type.startsWith('image/');
   if(doc) {
@@ -2382,11 +2277,17 @@ async function handleDocUpload(k, el) {
     errEl.classList.add('show'); el.value=''; return;
   }
   errEl.classList.remove('show');
-  const data = await fileToBase64(f);
-  if(!DB.documents[currentUser.id]) DB.documents[currentUser.id]={};
-  DB.documents[currentUser.id][k] = { nome_file:f.name, mime_type:f.type, data, date:new Date().toISOString() };
-  renderUserDocuments(document.getElementById('content'));
-  showToast('Documento caricato ✓');
+  const file_data = await fileToBase64(f);
+  const nome_file = f.name;
+  const mime_type = f.type;
+  try {
+    await apiFetch(`/documents/${currentUser.id}`, {
+      method:'POST',
+      body: JSON.stringify({ doc_key: k, nome_file, mime_type, file_data })
+    });
+    renderUserDocuments(document.getElementById('content'));
+    showToast('Documento caricato ✓');
+  } catch(e) { showToast('Errore caricamento documento', 'error'); }
 }
 
 function deleteDoc(k) {
@@ -2400,27 +2301,29 @@ function deleteDoc(k) {
   `);
 }
 
-function confirmDeleteDoc(k) {
-  delete DB.documents[currentUser.id][k];
-  closeModalDirect();
-  renderUserDocuments(document.getElementById('content'));
-  showToast('Documento eliminato','error');
+async function confirmDeleteDoc(k) {
+  try {
+    await apiFetch(`/documents/${currentUser.id}/${k}`, { method:'DELETE' });
+    closeModalDirect();
+    showToast('Documento eliminato','error');
+    renderUserDocuments(document.getElementById('content'));
+  } catch(e) { showToast('Errore eliminazione', 'error'); }
+}
+
+async function markMessageRead(id) {
+  await apiFetch(`/messages/${id}/read`, { method:'PATCH' }).catch(()=>{});
 }
 
 // ===== MESSAGES =====
-function renderUserMessages(content) {
-  const u = currentUser;
-  const msgs = DB.messages.filter(m => m.is_broadcast || m.target_user_id===u.id)
-    .sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
-  // Mark all as read
-  msgs.forEach(m => {
-    if(!m.read_by) m.read_by=[];
-    if(!m.read_by.includes(u.id)) m.read_by.push(u.id);
-  });
-  // Update badge
-  const navMsg = document.getElementById('nav-msgs');
-  if(navMsg) navMsg.innerHTML = '<span class="nav-icon">📬</span> Messaggi';
-  content.innerHTML = `
+async function renderUserMessages(content) {
+  try {
+    const msgs = await apiFetch('/messages');
+    // Mark all as read
+    msgs.forEach(m => markMessageRead(m.id));
+    // Update badge
+    const navMsg = document.getElementById('nav-msgs');
+    if(navMsg) navMsg.innerHTML = '<span class="nav-icon">📬</span> Messaggi';
+    content.innerHTML = `
     <div class="card">
       <div class="card-title">📬 Messaggi (${msgs.length})</div>
       ${msgs.length===0 ? '<div class="empty-state"><div class="empty-icon">📭</div>Nessun messaggio</div>' : `
@@ -2437,13 +2340,17 @@ function renderUserMessages(content) {
       </div>`}
     </div>
   `;
+  } catch(e) { content.innerHTML = `<div class="empty-state">Errore caricamento messaggi</div>`; }
 }
 
 // ===== SPESE AUTO =====
-function renderUserExpenses(content) {
+async function renderUserExpenses(content) {
   const u = currentUser;
-  if(!DB.expenses[u.id]) DB.expenses[u.id] = [];
-  const expenses = DB.expenses[u.id].slice().sort((a,b) => new Date(b.data) - new Date(a.data));
+  let expenses = [];
+  try {
+    expenses = await apiFetch(`/expenses/${u.id}`);
+    expenses = expenses.slice().sort((a,b) => new Date(b.data) - new Date(a.data));
+  } catch(e) { content.innerHTML = `<div class="empty-state">Errore caricamento spese</div>`; return; }
 
   // Group by month
   const byMonth = {};
@@ -2530,7 +2437,7 @@ function renderUserExpenses(content) {
                 <div class="expense-item-header">
                   <div>
                     <div class="expense-luogo">📍 ${e.luogo}</div>
-                    ${e.soloGuida
+                    ${(e.solo_guida||e.soloGuida)
                       ? `<div class="expense-solo-badge">🚗 Andato da solo</div>`
                       : `<div class="expense-solo-badge" style="color:var(--text-muted);border-color:var(--border);background:transparent">👥 Con altri</div>`}
                   </div>
@@ -2563,28 +2470,27 @@ function toggleSolo() {
   }
 }
 
-function submitExpense() {
+async function submitExpense() {
   const luogo = document.getElementById('exp-luogo')?.value.trim();
   const data  = document.getElementById('exp-data')?.value;
-  const note  = document.getElementById('exp-note')?.value.trim();
+  const note  = document.getElementById('exp-note')?.value.trim() || '';
+  const soloGuida = soloChecked;
   if(!luogo) { showToast('Inserisci il luogo del servizio', 'error'); return; }
   if(!data)  { showToast('Inserisci la data del servizio', 'error'); return; }
-  const u = currentUser;
-  if(!DB.expenses[u.id]) DB.expenses[u.id] = [];
-  DB.expenses[u.id].push({
-    id: uuid(), luogo, data, soloGuida: soloChecked,
-    note: note || '', created_at: new Date().toISOString(),
-    pagato: false
-  });
-  soloChecked = false;
-  showToast('Spesa salvata ✓');
-  renderUserExpenses(document.getElementById('content'));
+  try {
+    await apiFetch('/expenses', { method:'POST', body: JSON.stringify({luogo, data, solo_guida: soloGuida, note}) });
+    soloChecked = false;
+    showToast('Spesa salvata ✓');
+    renderUserExpenses(document.getElementById('content'));
+  } catch(e) { showToast('Errore salvataggio', 'error'); }
 }
 
-function editExpense(id) {
-  const u = currentUser;
-  const e = (DB.expenses[u.id]||[]).find(x => x.id === id);
-  if(!e) return;
+async function editExpense(id) {
+  try {
+    const expenses = await apiFetch(`/expenses/${currentUser.id}`);
+    const e = expenses.find(x => x.id === id);
+    if(!e) return;
+    const soloGuida = e.solo_guida || e.soloGuida || false;
   openModal(`
     <div class="modal-title">
       <span>✏️ Modifica Spesa</span>
@@ -2597,13 +2503,13 @@ function editExpense(id) {
       </div>
       <div class="field-group">
         <div class="field-label">📅 Data del Servizio</div>
-        <input class="field-input" type="date" id="edit-exp-data" value="${e.data}">
+        <input class="field-input" type="date" id="edit-exp-data" value="${e.data ? e.data.substring(0,10) : ''}">
       </div>
       <div class="field-group" style="display:flex;flex-direction:column;justify-content:flex-end">
         <div class="field-label">🚗 Modalità</div>
-        <label class="solo-checkbox-wrap ${e.soloGuida?'checked':''}" id="edit-solo-wrap" onclick="toggleEditSolo()">
-          <input type="checkbox" id="edit-exp-solo" ${e.soloGuida?'checked':''}>
-          <div class="custom-checkbox" id="edit-solo-icon">${e.soloGuida?'✓':''}</div>
+        <label class="solo-checkbox-wrap ${soloGuida?'checked':''}" id="edit-solo-wrap" onclick="toggleEditSolo()">
+          <input type="checkbox" id="edit-exp-solo" ${soloGuida?'checked':''}>
+          <div class="custom-checkbox" id="edit-solo-icon">${soloGuida?'✓':''}</div>
           <div>
             <div class="solo-label">Sono andato da solo!</div>
             <div class="solo-sublabel">Mezzo proprio</div>
@@ -2620,7 +2526,8 @@ function editExpense(id) {
       <button class="btn-sm btn-secondary" onclick="closeModalDirect()">Annulla</button>
     </div>
   `);
-  window._editSolo = e.soloGuida;
+  window._editSolo = soloGuida;
+  } catch(e) { showToast('Errore', 'error'); }
 }
 
 function toggleEditSolo() {
@@ -2632,21 +2539,20 @@ function toggleEditSolo() {
   else { wrap.classList.remove('checked'); icon.textContent=''; }
 }
 
-function saveExpenseEdit(id) {
-  const u = currentUser;
-  const e = (DB.expenses[u.id]||[]).find(x => x.id === id);
-  if(!e) return;
+async function saveExpenseEdit(id) {
   const luogo = document.getElementById('edit-exp-luogo').value.trim();
   const data  = document.getElementById('edit-exp-data').value;
   const note  = document.getElementById('edit-exp-note').value.trim();
+  const soloGuida = window._editSolo || false;
   if(!luogo) { showToast('Inserisci il luogo','error'); return; }
   if(!data)  { showToast('Inserisci la data','error'); return; }
-  e.luogo = luogo; e.data = data;
-  e.soloGuida = window._editSolo || false;
-  e.note = note;
-  closeModalDirect();
-  renderUserExpenses(document.getElementById('content'));
-  showToast('Spesa aggiornata ✓');
+  try {
+    await apiFetch(`/expenses/${id}`, { method:'PUT', body: JSON.stringify({luogo, data, solo_guida: soloGuida, note}) });
+    closeModalDirect();
+    showToast('Spesa aggiornata ✓');
+    if(currentUser.is_admin) renderAdminExpenses(document.getElementById('content'));
+    else renderUserExpenses(document.getElementById('content'));
+  } catch(e) { showToast('Errore', 'error'); }
 }
 
 function deleteExpense(id) {
@@ -2666,27 +2572,29 @@ function deleteExpense(id) {
   `);
 }
 
-function confirmDeleteExpense(id) {
-  const u = currentUser;
-  DB.expenses[u.id] = (DB.expenses[u.id]||[]).filter(e => e.id !== id);
-  closeModalDirect();
-  renderUserExpenses(document.getElementById('content'));
-  showToast('Spesa eliminata','error');
+async function confirmDeleteExpense(id) {
+  try {
+    await apiFetch(`/expenses/${id}`, { method:'DELETE' });
+    closeModalDirect();
+    showToast('Spesa eliminata','error');
+    if(currentUser.is_admin) renderAdminExpenses(document.getElementById('content'));
+    else renderUserExpenses(document.getElementById('content'));
+  } catch(e) { showToast('Errore eliminazione', 'error'); }
 }
 
 // ===== ADMIN SPESE AUTO =====
-function renderAdminExpenses(content, searchQuery) {
-  const users = DB.users.filter(u => !u.is_admin);
+async function renderAdminExpenses(content, searchQuery) {
+  try {
+  const [allExpensesRaw, users] = await Promise.all([
+    apiFetch('/expenses'),
+    apiFetch('/users')
+  ]);
+
   const query = (searchQuery || '').toLowerCase().trim();
 
-  // Build flat list of all expenses with user info
-  let allExpenses = [];
-  users.forEach(u => {
-    const exps = DB.expenses[u.id] || [];
-    exps.forEach(e => {
-      allExpenses.push({ ...e, user: u });
-    });
-  });
+  // allExpensesRaw from /expenses already has user info (nome, cognome, email)
+  // Normalize solo_guida field
+  const allExpenses = allExpensesRaw.map(e => ({...e, soloGuida: e.solo_guida || e.soloGuida || false}));
 
   // Stats
   const totalExp    = allExpenses.length;
@@ -2767,7 +2675,7 @@ function renderAdminExpenses(content, searchQuery) {
           </div>` : ''}
 
         ${query && searchResults.length > 0 ? searchResults.map(u => {
-          const uExps = (DB.expenses[u.id] || []).slice().sort((a,b) => new Date(b.data)-new Date(a.data));
+          const uExps = allExpenses.filter(e => e.user_id === u.id).slice().sort((a,b) => new Date(b.data)-new Date(a.data));
           const uPagato   = uExps.filter(e => e.pagato).length;
           const uDaPagare = uExps.length - uPagato;
           return `
@@ -2848,8 +2756,8 @@ function renderAdminExpenses(content, searchQuery) {
                     <tr>
                       <td>
                         <div class="operator-name-cell">
-                          ${e.user.nome} ${e.user.cognome}
-                          <span class="operator-email-cell">${e.user.email}</span>
+                          ${e.nome} ${e.cognome}
+                          <span class="operator-email-cell">${e.email}</span>
                         </div>
                       </td>
                       <td style="white-space:nowrap;font-family:'Cinzel',serif;font-size:11px;color:var(--gold)">
@@ -2859,7 +2767,7 @@ function renderAdminExpenses(content, searchQuery) {
                       <td><span class="solo-chip ${e.soloGuida?'yes':'no'}">${e.soloGuida?'🚗 Solo':'👥 No'}</span></td>
                       <td><div class="note-cell" title="${e.note||''}">${e.note||'—'}</div></td>
                       <td>
-                        <div class="pagato-toggle ${e.pagato?'on':''}" onclick="togglePagato('${e.user.id}','${e.id}', false, '')">
+                        <div class="pagato-toggle ${e.pagato?'on':''}" onclick="togglePagato('${e.user_id}','${e.id}', false, '')">
                           <div class="toggle-pill"></div>
                           <span class="pagato-label">${e.pagato?'Sì':'No'}</span>
                         </div>
@@ -2872,48 +2780,42 @@ function renderAdminExpenses(content, searchQuery) {
         }).join('')}
     </div>
   `;
+  } catch(e) { content.innerHTML = '<div class="empty-state">Errore caricamento spese</div>'; }
 }
 
-function togglePagato(userId, expId, fromSearch, searchQuery) {
-  const exps = DB.expenses[userId] || [];
-  const exp  = exps.find(e => e.id === expId);
-  if (!exp) return;
-  exp.pagato = !exp.pagato;
-  const content = document.getElementById('content');
-  if (fromSearch) {
-    renderAdminExpenses(content, searchQuery);
-    // Restore focus to search input
-    setTimeout(() => {
-      const inp = document.getElementById('exp-search-input');
-      if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
-    }, 50);
-  } else {
-    renderAdminExpenses(content, '');
-  }
-  showToast(exp.pagato ? 'Spesa contrassegnata come pagata ✓' : 'Spesa rimarcata come non pagata', exp.pagato ? 'success' : 'error');
+async function togglePagato(userId, expId, fromSearch, searchQuery) {
+  try {
+    await apiFetch(`/expenses/${expId}/pagato`, { method: 'PATCH', body: JSON.stringify({}) });
+    const content = document.getElementById('content');
+    if (fromSearch) {
+      await renderAdminExpenses(content, searchQuery);
+      setTimeout(() => {
+        const inp = document.getElementById('exp-search-input');
+        if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+      }, 50);
+    } else {
+      await renderAdminExpenses(content, '');
+    }
+    showToast('Stato spesa aggiornato ✓', 'success');
+  } catch(e) { showToast('Errore aggiornamento spesa', 'error'); }
 }
 
 // ===== EXPORT FUNCTIONS =====
 
-function getAllExpensesFlat() {
-  const users = DB.users.filter(u => !u.is_admin);
-  const rows = [];
-  users.forEach(u => {
-    (DB.expenses[u.id] || []).forEach(e => {
-      rows.push({
-        cognome:   u.cognome,
-        nome:      u.nome,
-        email:     u.email,
-        data:      e.data,
-        luogo:     e.luogo,
-        solo:      e.soloGuida ? 'Sì' : 'No',
-        note:      e.note || '',
-        pagato:    e.pagato ? 'Conteggiata' : 'Da conteggiare',
-        userId:    u.id,
-        expId:     e.id
-      });
-    });
-  });
+async function getAllExpensesFlat() {
+  const allExpenses = await apiFetch('/expenses');
+  const rows = allExpenses.map(e => ({
+    cognome:   e.cognome,
+    nome:      e.nome,
+    email:     e.email,
+    data:      e.data,
+    luogo:     e.luogo,
+    solo:      (e.solo_guida || e.soloGuida) ? 'Sì' : 'No',
+    note:      e.note || '',
+    pagato:    e.pagato ? 'Conteggiata' : 'Da conteggiare',
+    userId:    e.user_id,
+    expId:     e.id
+  }));
   return rows.sort((a, b) => b.data.localeCompare(a.data));
 }
 
@@ -2922,11 +2824,11 @@ function getMonthLabel(dateStr) {
 }
 
 // ---- PDF EXPORT ----
-function exportExpensesPDF() {
+async function exportExpensesPDF() {
   const { jsPDF } = window.jspdf;
   if (!jsPDF) { showToast('Libreria PDF non disponibile','error'); return; }
 
-  const rows = getAllExpensesFlat();
+  const rows = await getAllExpensesFlat();
   const doc  = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const W    = doc.internal.pageSize.getWidth();
   const H    = doc.internal.pageSize.getHeight();
@@ -3086,10 +2988,10 @@ function exportExpensesPDF() {
 }
 
 // ---- GOOGLE SHEETS (XLSX) EXPORT ----
-function exportExpensesSheets() {
+async function exportExpensesSheets() {
   if (!window.XLSX) { showToast('Libreria XLSX non disponibile','error'); return; }
 
-  const rows = getAllExpensesFlat();
+  const rows = await getAllExpensesFlat();
   const wb   = XLSX.utils.book_new();
 
   // ---- Sheet 1: Full data ----
@@ -3301,7 +3203,7 @@ async function driveUpload(format) {
       filename = `AlfaSecurity_SpeseAuto_${dateStr}.pdf`;
       mimeType = 'application/pdf';
     } else {
-      blob     = generateXLSXBlob();
+      blob     = await generateXLSXBlob();
       filename = `AlfaSecurity_SpeseAuto_${dateStr}.xlsx`;
       mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
     }
@@ -3365,7 +3267,7 @@ function buildMultipartBody(boundary, metaJson, mimeType, fileBuffer) {
 
 async function generatePDFBlob() {
   const { jsPDF } = window.jspdf;
-  const rows = getAllExpensesFlat();
+  const rows = await getAllExpensesFlat();
   const doc  = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
@@ -3411,8 +3313,8 @@ async function generatePDFBlob() {
   return new Blob([doc.output('arraybuffer')], {type:'application/pdf'});
 }
 
-function generateXLSXBlob() {
-  const rows = getAllExpensesFlat();
+async function generateXLSXBlob() {
+  const rows = await getAllExpensesFlat();
   const wb   = XLSX.utils.book_new();
   const headers = ['Cognome','Nome','Email','Data','Luogo Servizio','Solo','Note','Stato Pagamento'];
   const ws1 = XLSX.utils.aoa_to_sheet([headers, ...rows.map(r=>[r.cognome,r.nome,r.email,r.data,r.luogo,r.solo,r.note,r.pagato])]);
@@ -3423,28 +3325,31 @@ function generateXLSXBlob() {
 }
 
 // ===== USER INFO SECTION =====
-function renderUserInfo(content) {
-  content.innerHTML = `
-    <div class="card">
-      <div class="card-title">ℹ️ Informazioni Utili</div>
-      <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;line-height:1.7">
-        Di seguito trovi le informazioni operative aggiornate. Clicca su ogni voce per espanderla.
-      </p>
-      <div id="info-list">
-        ${DB.infoItems.length === 0
-          ? '<div class="empty-state"><div class="empty-icon">ℹ️</div>Nessuna informazione disponibile al momento.</div>'
-          : DB.infoItems.map((item, i) => `
-            <div class="info-item" id="info-item-${item.id}">
-              <div class="info-item-header" onclick="toggleInfoItem('${item.id}')">
-                <div class="info-item-num">${i+1}</div>
-                <div class="info-item-preview">${item.text.substring(0,80)}${item.text.length>80?'…':''}</div>
-                <div class="info-chevron">▼</div>
-              </div>
-              <div class="info-item-body">${item.text}</div>
-            </div>`).join('')}
+async function renderUserInfo(content) {
+  try {
+    const infoItems = await apiFetch('/info-items');
+    content.innerHTML = `
+      <div class="card">
+        <div class="card-title">ℹ️ Informazioni Utili</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;line-height:1.7">
+          Di seguito trovi le informazioni operative aggiornate. Clicca su ogni voce per espanderla.
+        </p>
+        <div id="info-list">
+          ${infoItems.length === 0
+            ? '<div class="empty-state"><div class="empty-icon">ℹ️</div>Nessuna informazione disponibile al momento.</div>'
+            : infoItems.map((item, i) => `
+              <div class="info-item" id="info-item-${item.id}">
+                <div class="info-item-header" onclick="toggleInfoItem('${item.id}')">
+                  <div class="info-item-num">${i+1}</div>
+                  <div class="info-item-preview">${item.text.substring(0,80)}${item.text.length>80?'…':''}</div>
+                  <div class="info-chevron">▼</div>
+                </div>
+                <div class="info-item-body">${item.text}</div>
+              </div>`).join('')}
+        </div>
       </div>
-    </div>
-  `;
+    `;
+  } catch(e) { content.innerHTML = '<div class="empty-state">Errore caricamento informazioni</div>'; }
 }
 
 function toggleInfoItem(id) {
@@ -3453,171 +3358,179 @@ function toggleInfoItem(id) {
 }
 
 // ===== USER RULES SECTION =====
-function getRulesPendingCount() {
+async function getRulesPendingCount() {
   if (!currentUser) return 0;
-  return DB.rules.filter(r => {
-    const log = DB.rulesLog.find(l => l.userId === currentUser.id && l.ruleId === r.id);
-    return !log;
-  }).length;
+  try {
+    const [rules, rulesLog] = await Promise.all([
+      apiFetch('/rules'),
+      apiFetch('/rules-log')
+    ]);
+    return rules.filter(r => {
+      const log = rulesLog.find(l => l.user_id === currentUser.id && l.rule_id === r.id);
+      return !log;
+    }).length;
+  } catch(e) { return 0; }
 }
 
-function getUserRuleDecision(ruleId) {
-  if (!currentUser) return null;
-  const log = DB.rulesLog.filter(l => l.userId === currentUser.id && l.ruleId === ruleId);
-  if (!log.length) return null;
-  return log[log.length - 1];
+async function renderUserRules(content) {
+  try {
+    const [rules, rulesLog] = await Promise.all([
+      apiFetch('/rules'),
+      apiFetch('/rules-log')
+    ]);
+    const getUserRuleDecision = (ruleId) => {
+      const log = rulesLog.filter(l => l.user_id === currentUser.id && l.rule_id === ruleId);
+      if (!log.length) return null;
+      return log[log.length - 1];
+    };
+    const pending = rules.filter(r => !getUserRuleDecision(r.id)).length;
+    content.innerHTML = `
+      <div class="card">
+        <div class="card-title">📜 Accettazione Regole</div>
+        ${pending > 0 ? `
+          <div class="rules-alert">
+            ⚠️ Hai <strong>${pending} regole</strong> che richiedono la tua attenzione.<br>
+            Per completare l'attivazione leggi e rispondi a ciascun punto.
+          </div>` : `
+          <div style="background:rgba(39,174,96,0.1);border:1px solid rgba(39,174,96,0.3);border-radius:var(--radius);
+            padding:14px 18px;margin-bottom:20px;color:#2ecc71;font-size:13px;font-weight:600">
+            ✅ Hai risposto a tutte le regole. Grazie per aver completato la revisione.
+          </div>`}
+        ${rules.length === 0
+          ? '<div class="empty-state"><div class="empty-icon">📜</div>Nessuna regola pubblicata al momento.</div>'
+          : rules.map((r, i) => {
+            const dec = getUserRuleDecision(r.id);
+            const status = dec ? dec.decision : 'pending';
+            const statusLabel = {accepted:'✅ Accettato', rejected:'❌ Non Accettato', viewed:'👁 Visionato', pending:'⏳ In attesa'}[status];
+            const badgeClass = {accepted:'accepted', rejected:'rejected', viewed:'viewed', pending:'pending'}[status];
+            return `
+            <div class="rule-row">
+              <div class="rule-title-badge">📋 Regola ${i+1}${r.title ? ' — ' + r.title : ''}</div>
+              <div class="rule-row-text">${r.text}</div>
+              ${r.pdf_data ? `<div style="margin-bottom:12px">
+                <a class="rule-pdf-badge" href="${r.pdf_data}" target="_blank">
+                  📄 Visualizza PDF allegato: ${r.pdf_name||'documento.pdf'}
+                </a>
+              </div>` : ''}
+              <div class="rule-buttons">
+                <button class="btn-accept view ${dec?.decision==='viewed'?'active':''}"
+                  onclick="recordRuleDecision('${r.id}','viewed')">👁 Visionato</button>
+                <button class="btn-accept yes ${dec?.decision==='accepted'?'active':''}"
+                  onclick="recordRuleDecision('${r.id}','accepted')">✅ Accetto</button>
+                <button class="btn-accept no ${dec?.decision==='rejected'?'active':''}"
+                  onclick="recordRuleDecision('${r.id}','rejected')">❌ Non Accetto</button>
+                ${dec ? `<span class="rule-status-badge ${badgeClass}">${statusLabel}<br>
+                  <span style="font-size:10px;font-weight:400">${new Date(dec.timestamp||dec.created_at).toLocaleString('it-IT')}</span>
+                </span>` : ''}
+              </div>
+            </div>`;
+          }).join('')}
+      </div>
+    `;
+  } catch(e) { content.innerHTML = '<div class="empty-state">Errore caricamento regole</div>'; }
 }
 
-function renderUserRules(content) {
-  const u = currentUser;
-  const pending = getRulesPendingCount();
-  content.innerHTML = `
-    <div class="card">
-      <div class="card-title">📜 Accettazione Regole</div>
-      ${pending > 0 ? `
-        <div class="rules-alert">
-          ⚠️ Hai <strong>${pending} regole</strong> che richiedono la tua attenzione.<br>
-          Per completare l'attivazione leggi e rispondi a ciascun punto.
-        </div>` : `
-        <div style="background:rgba(39,174,96,0.1);border:1px solid rgba(39,174,96,0.3);border-radius:var(--radius);
-          padding:14px 18px;margin-bottom:20px;color:#2ecc71;font-size:13px;font-weight:600">
-          ✅ Hai risposto a tutte le regole. Grazie per aver completato la revisione.
-        </div>`}
-      ${DB.rules.length === 0
-        ? '<div class="empty-state"><div class="empty-icon">📜</div>Nessuna regola pubblicata al momento.</div>'
-        : DB.rules.map((r, i) => {
-          const dec = getUserRuleDecision(r.id);
-          const status = dec ? dec.decision : 'pending';
-          const statusLabel = {accepted:'✅ Accettato', rejected:'❌ Non Accettato', viewed:'👁 Visionato', pending:'⏳ In attesa'}[status];
-          const badgeClass = {accepted:'accepted', rejected:'rejected', viewed:'viewed', pending:'pending'}[status];
-          return `
-          <div class="rule-row">
-            <div class="rule-title-badge">📋 Regola ${i+1}${r.title ? ' — ' + r.title : ''}</div>
-            <div class="rule-row-text">${r.text}</div>
-            ${r.pdfData ? `<div style="margin-bottom:12px">
-              <a class="rule-pdf-badge" href="${r.pdfData}" target="_blank">
-                📄 Visualizza PDF allegato: ${r.pdfName||'documento.pdf'}
-              </a>
-            </div>` : ''}
-            <div class="rule-buttons">
-              <button class="btn-accept view ${dec?.decision==='viewed'?'active':''}"
-                onclick="recordRuleDecision('${r.id}','viewed')">👁 Visionato</button>
-              <button class="btn-accept yes ${dec?.decision==='accepted'?'active':''}"
-                onclick="recordRuleDecision('${r.id}','accepted')">✅ Accetto</button>
-              <button class="btn-accept no ${dec?.decision==='rejected'?'active':''}"
-                onclick="recordRuleDecision('${r.id}','rejected')">❌ Non Accetto</button>
-              ${dec ? `<span class="rule-status-badge ${badgeClass}">${statusLabel}<br>
-                <span style="font-size:10px;font-weight:400">${new Date(dec.timestamp).toLocaleString('it-IT')}</span>
-              </span>` : ''}
-            </div>
-          </div>`;
-        }).join('')}
-    </div>
-  `;
-}
-
-function recordRuleDecision(ruleId, decision) {
-  const u = currentUser;
-  const rule = DB.rules.find(r => r.id === ruleId);
-  if (!rule) return;
-  // Remove previous log entry for this user+rule
-  DB.rulesLog = DB.rulesLog.filter(l => !(l.userId === u.id && l.ruleId === ruleId));
-  DB.rulesLog.push({
-    id: uuid(),
-    userId: u.id,
-    userName: `${u.nome} ${u.cognome}` || u.email,
-    userEmail: u.email,
-    ruleId: ruleId,
-    ruleText: rule.text,
-    decision: decision,
-    timestamp: new Date().toISOString()
-  });
-  const labels = { accepted: 'Accettata ✅', rejected: 'Non Accettata ❌', viewed: 'Visionata 👁' };
-  showToast(`Regola ${labels[decision]}`);
-  renderUserRules(document.getElementById('content'));
-  // Update badge in sidebar
-  buildUserUI();
-  showUserPage('rules', null);
-  document.querySelectorAll('.nav-item').forEach(n => {
-    if (n.textContent.includes('Accettazione')) n.classList.add('active');
-  });
+async function recordRuleDecision(ruleId, decision) {
+  try {
+    await apiFetch('/rules-log', {
+      method: 'POST',
+      body: JSON.stringify({ rule_id: ruleId, decision })
+    });
+    const labels = { accepted: 'Accettata ✅', rejected: 'Non Accettata ❌', viewed: 'Visionata 👁' };
+    showToast(`Regola ${labels[decision]}`);
+    await renderUserRules(document.getElementById('content'));
+    await buildUserUI();
+    showUserPage('rules', null);
+    document.querySelectorAll('.nav-item').forEach(n => {
+      if (n.textContent.includes('Accettazione')) n.classList.add('active');
+    });
+  } catch(e) { showToast('Errore registrazione risposta', 'error'); }
 }
 
 // ===== ADMIN INFO MANAGEMENT =====
-function renderAdminInfo(content) {
-  content.innerHTML = `
-    <div class="card">
-      <div class="card-title">ℹ️ Gestione Info per Operatori</div>
-      <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;line-height:1.7">
-        Le informazioni inserite qui appariranno nella sezione <strong style="color:var(--gold)">Info</strong>
-        visibile da tutti gli operatori, come elenco espandibile.
-      </p>
+async function renderAdminInfo(content) {
+  try {
+    const infoItems = await apiFetch('/info-items');
+    content.innerHTML = `
+      <div class="card">
+        <div class="card-title">ℹ️ Gestione Info per Operatori</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;line-height:1.7">
+          Le informazioni inserite qui appariranno nella sezione <strong style="color:var(--gold)">Info</strong>
+          visibile da tutti gli operatori, come elenco espandibile.
+        </p>
 
-      <!-- ADD NEW INFO -->
-      <div class="expense-form-wrap" style="margin-bottom:24px">
-        <div class="expense-form-title">➕ Aggiungi Nuova Info</div>
-        <div class="field-group" style="margin-bottom:12px">
-          <div class="field-label">Testo dell'informazione</div>
-          <textarea class="field-input" id="new-info-text" style="min-height:80px"
-            placeholder="Scrivi qui l'informazione da pubblicare per tutti gli operatori..."></textarea>
+        <!-- ADD NEW INFO -->
+        <div class="expense-form-wrap" style="margin-bottom:24px">
+          <div class="expense-form-title">➕ Aggiungi Nuova Info</div>
+          <div class="field-group" style="margin-bottom:12px">
+            <div class="field-label">Testo dell'informazione</div>
+            <textarea class="field-input" id="new-info-text" style="min-height:80px"
+              placeholder="Scrivi qui l'informazione da pubblicare per tutti gli operatori..."></textarea>
+          </div>
+          <button class="btn-sm btn-primary" onclick="addInfoItem()">➕ Pubblica Info</button>
         </div>
-        <button class="btn-sm btn-primary" onclick="addInfoItem()">➕ Pubblica Info</button>
-      </div>
 
-      <!-- INFO LIST -->
-      <div class="card-title" style="margin-bottom:14px;font-size:11px">
-        📋 Info Pubblicate (${DB.infoItems.length})
+        <!-- INFO LIST -->
+        <div class="card-title" style="margin-bottom:14px;font-size:11px">
+          📋 Info Pubblicate (${infoItems.length})
+        </div>
+        ${infoItems.length === 0
+          ? '<div class="empty-state"><div class="empty-icon">ℹ️</div>Nessuna info pubblicata</div>'
+          : infoItems.map((item, i) => `
+            <div class="info-admin-row">
+              <div class="info-admin-num">${i+1}</div>
+              <div class="info-admin-text" id="info-text-${item.id}">${item.text}</div>
+              <div class="info-admin-actions">
+                <button class="btn-sm btn-secondary" onclick="editInfoItem('${item.id}')">✏️</button>
+                <button class="btn-sm btn-danger" onclick="deleteInfoItem('${item.id}')">🗑</button>
+              </div>
+            </div>`).join('')}
       </div>
-      ${DB.infoItems.length === 0
-        ? '<div class="empty-state"><div class="empty-icon">ℹ️</div>Nessuna info pubblicata</div>'
-        : DB.infoItems.map((item, i) => `
-          <div class="info-admin-row">
-            <div class="info-admin-num">${i+1}</div>
-            <div class="info-admin-text" id="info-text-${item.id}">${item.text}</div>
-            <div class="info-admin-actions">
-              <button class="btn-sm btn-secondary" onclick="editInfoItem('${item.id}')">✏️</button>
-              <button class="btn-sm btn-danger" onclick="deleteInfoItem('${item.id}')">🗑</button>
-            </div>
-          </div>`).join('')}
-    </div>
-  `;
+    `;
+  } catch(e) { content.innerHTML = '<div class="empty-state">Errore caricamento info</div>'; }
 }
 
-function addInfoItem() {
+async function addInfoItem() {
   const text = document.getElementById('new-info-text')?.value.trim();
   if (!text) { showToast("Scrivi il testo dell'info", 'error'); return; }
-  DB.infoItems.push({ id: uuid(), text, expanded: false });
-  renderAdminInfo(document.getElementById('content'));
-  showToast('Info pubblicata ✓');
+  try {
+    await apiFetch('/info-items', { method: 'POST', body: JSON.stringify({ text }) });
+    await renderAdminInfo(document.getElementById('content'));
+    showToast('Info pubblicata ✓');
+  } catch(e) { showToast('Errore pubblicazione info', 'error'); }
 }
 
-function editInfoItem(id) {
-  const item = DB.infoItems.find(i => i.id === id);
-  if (!item) return;
-  openModal(`
-    <div class="modal-title">
-      <span>✏️ Modifica Info</span>
-      <span class="modal-close" onclick="closeModalDirect()">✕</span>
-    </div>
-    <div class="field-group" style="margin-bottom:20px">
-      <div class="field-label">Testo</div>
-      <textarea class="field-input" id="edit-info-text" style="min-height:100px">${item.text}</textarea>
-    </div>
-    <div class="btn-row">
-      <button class="btn-sm btn-primary" onclick="saveInfoItem('${id}')">💾 Salva</button>
-      <button class="btn-sm btn-secondary" onclick="closeModalDirect()">Annulla</button>
-    </div>
-  `);
+async function editInfoItem(id) {
+  try {
+    const infoItems = await apiFetch('/info-items');
+    const item = infoItems.find(i => i.id === id);
+    if (!item) return;
+    openModal(`
+      <div class="modal-title">
+        <span>✏️ Modifica Info</span>
+        <span class="modal-close" onclick="closeModalDirect()">✕</span>
+      </div>
+      <div class="field-group" style="margin-bottom:20px">
+        <div class="field-label">Testo</div>
+        <textarea class="field-input" id="edit-info-text" style="min-height:100px">${item.text}</textarea>
+      </div>
+      <div class="btn-row">
+        <button class="btn-sm btn-primary" onclick="saveInfoItem('${id}')">💾 Salva</button>
+        <button class="btn-sm btn-secondary" onclick="closeModalDirect()">Annulla</button>
+      </div>
+    `);
+  } catch(e) { showToast('Errore', 'error'); }
 }
 
-function saveInfoItem(id) {
-  const item = DB.infoItems.find(i => i.id === id);
+async function saveInfoItem(id) {
   const text = document.getElementById('edit-info-text')?.value.trim();
-  if (!item || !text) return;
-  item.text = text;
-  closeModalDirect();
-  renderAdminInfo(document.getElementById('content'));
-  showToast('Info aggiornata ✓');
+  if (!text) return;
+  try {
+    await apiFetch(`/info-items/${id}`, { method: 'PUT', body: JSON.stringify({ text }) });
+    closeModalDirect();
+    await renderAdminInfo(document.getElementById('content'));
+    showToast('Info aggiornata ✓');
+  } catch(e) { showToast('Errore aggiornamento info', 'error'); }
 }
 
 function deleteInfoItem(id) {
@@ -3636,116 +3549,126 @@ function deleteInfoItem(id) {
   `);
 }
 
-function confirmDeleteInfo(id) {
-  DB.infoItems = DB.infoItems.filter(i => i.id !== id);
-  closeModalDirect();
-  renderAdminInfo(document.getElementById('content'));
-  showToast('Info eliminata', 'error');
+async function confirmDeleteInfo(id) {
+  try {
+    await apiFetch(`/info-items/${id}`, { method: 'DELETE' });
+    closeModalDirect();
+    await renderAdminInfo(document.getElementById('content'));
+    showToast('Info eliminata', 'error');
+  } catch(e) { showToast('Errore eliminazione info', 'error'); }
 }
 
 // ===== ADMIN RULES MANAGEMENT =====
-function renderAdminRules(content) {
-  const sortedLog = DB.rulesLog.slice().sort((a,b) => new Date(b.timestamp)-new Date(a.timestamp));
-  content.innerHTML = `
-    <div class="card" style="margin-bottom:20px">
-      <div class="card-title">📜 Regole per Operatori</div>
-      <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;line-height:1.7">
-        Le regole inserite qui dovranno essere visionate e accettate da ogni operatore.
-        Ogni risposta viene registrata nel log sottostante con data, ora e nome operatore.
-      </p>
+async function renderAdminRules(content) {
+  try {
+    const [rules, rulesLog] = await Promise.all([
+      apiFetch('/rules'),
+      apiFetch('/rules-log')
+    ]);
+    const sortedLog = rulesLog.slice().sort((a,b) => new Date(b.timestamp||b.created_at)-new Date(a.timestamp||a.created_at));
+    content.innerHTML = `
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-title">📜 Regole per Operatori</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;line-height:1.7">
+          Le regole inserite qui dovranno essere visionate e accettate da ogni operatore.
+          Ogni risposta viene registrata nel log sottostante con data, ora e nome operatore.
+        </p>
 
-      <!-- ADD RULE -->
-      <div class="expense-form-wrap" style="margin-bottom:24px">
-        <div class="expense-form-title">➕ Aggiungi Nuova Regola</div>
-        <div class="form-grid" style="margin-bottom:12px">
-          <div class="field-group full">
-            <div class="field-label">📋 Titolo della Regola</div>
-            <input class="field-input" id="new-rule-title" placeholder="Es: Codice di Condotta, Uso Divisa, Riservatezza...">
-          </div>
-          <div class="field-group full">
-            <div class="field-label">📝 Testo della regola (formato esteso)</div>
-            <textarea class="field-input" id="new-rule-text" style="min-height:100px"
-              placeholder="Scrivi il testo completo della regola che gli operatori dovranno leggere e accettare..."></textarea>
-          </div>
-          <div class="field-group full">
-            <div class="field-label">📄 Allega PDF (opzionale)</div>
-            <input type="file" id="new-rule-pdf" accept=".pdf"
-              style="color:var(--text-muted);font-size:13px">
-            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
-              Il PDF verrà visualizzato dall'operatore nella sezione Accettazione Regole
+        <!-- ADD RULE -->
+        <div class="expense-form-wrap" style="margin-bottom:24px">
+          <div class="expense-form-title">➕ Aggiungi Nuova Regola</div>
+          <div class="form-grid" style="margin-bottom:12px">
+            <div class="field-group full">
+              <div class="field-label">📋 Titolo della Regola</div>
+              <input class="field-input" id="new-rule-title" placeholder="Es: Codice di Condotta, Uso Divisa, Riservatezza...">
+            </div>
+            <div class="field-group full">
+              <div class="field-label">📝 Testo della regola (formato esteso)</div>
+              <textarea class="field-input" id="new-rule-text" style="min-height:100px"
+                placeholder="Scrivi il testo completo della regola che gli operatori dovranno leggere e accettare..."></textarea>
+            </div>
+            <div class="field-group full">
+              <div class="field-label">📄 Allega PDF (opzionale)</div>
+              <input type="file" id="new-rule-pdf" accept=".pdf"
+                style="color:var(--text-muted);font-size:13px">
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
+                Il PDF verrà visualizzato dall'operatore nella sezione Accettazione Regole
+              </div>
             </div>
           </div>
+          <button class="btn-sm btn-primary" onclick="addAdminRule()">📜 Pubblica Regola</button>
         </div>
-        <button class="btn-sm btn-primary" onclick="addAdminRule()">📜 Pubblica Regola</button>
+
+        <!-- RULES LIST -->
+        <div class="card-title" style="margin-bottom:14px;font-size:11px">
+          📋 Regole Attive (${rules.length})
+        </div>
+        ${rules.length === 0
+          ? '<div class="empty-state"><div class="empty-icon">📜</div>Nessuna regola pubblicata</div>'
+          : rules.map((r, i) => {
+            const acceptedCount = rulesLog.filter(l => l.rule_id === r.id && l.decision === 'accepted').length;
+            const rejectedCount = rulesLog.filter(l => l.rule_id === r.id && l.decision === 'rejected').length;
+            const viewedCount   = rulesLog.filter(l => l.rule_id === r.id && l.decision === 'viewed').length;
+            return `
+            <div class="info-admin-row" style="flex-direction:column;gap:10px">
+              <div style="display:flex;align-items:flex-start;gap:12px;width:100%">
+                <div class="info-admin-num">${i+1}</div>
+                <div style="flex:1">
+                  ${r.title ? `<div class="rule-title-badge" style="margin-bottom:6px">📋 ${r.title}</div>` : ''}
+                  <div class="info-admin-text">${r.text}</div>
+                  ${r.pdf_data ? `<div style="margin-top:6px"><a class="rule-pdf-badge" href="${r.pdf_data}" target="_blank">📄 ${r.pdf_name||'PDF allegato'}</a></div>` : '<div style="font-size:11px;color:var(--text-muted);margin-top:4px">📎 Nessun PDF allegato</div>'}
+                </div>
+                <div class="info-admin-actions">
+                  <button class="btn-sm btn-secondary" onclick="editAdminRule('${r.id}')">✏️ Modifica</button>
+                  <button class="btn-sm btn-danger" onclick="deleteAdminRule('${r.id}')">🗑</button>
+                </div>
+              </div>
+              <div style="display:flex;gap:10px;padding-left:38px;flex-wrap:wrap">
+                <span style="font-size:11px;background:rgba(39,174,96,0.1);color:#2ecc71;padding:2px 10px;border-radius:10px;border:1px solid rgba(39,174,96,0.3)">✅ Accettate: ${acceptedCount}</span>
+                <span style="font-size:11px;background:rgba(231,76,60,0.1);color:#e74c3c;padding:2px 10px;border-radius:10px;border:1px solid rgba(231,76,60,0.3)">❌ Non accettate: ${rejectedCount}</span>
+                <span style="font-size:11px;background:rgba(201,162,39,0.1);color:var(--gold);padding:2px 10px;border-radius:10px;border:1px solid var(--border-gold)">👁 Visionate: ${viewedCount}</span>
+              </div>
+            </div>`;
+          }).join('')}
       </div>
 
-      <!-- RULES LIST -->
-      <div class="card-title" style="margin-bottom:14px;font-size:11px">
-        📋 Regole Attive (${DB.rules.length})
+      <!-- LOG -->
+      <div class="card">
+        <div class="card-title">📋 Log Accettazioni (${sortedLog.length} voci)</div>
+        ${sortedLog.length === 0
+          ? '<div class="empty-state"><div class="empty-icon">📋</div>Nessuna risposta registrata</div>'
+          : `<div class="table-wrap">
+            <table class="admin-exp-table">
+              <thead><tr>
+                <th>Data e Ora</th>
+                <th>Operatore</th>
+                <th>Email</th>
+                <th>Regola</th>
+                <th>Risposta</th>
+              </tr></thead>
+              <tbody>
+                ${sortedLog.map(l => {
+                  const decLabel = {accepted:'✅ Accettato', rejected:'❌ Non Accettato', viewed:'👁 Visionato'}[l.decision] || l.decision;
+                  const decColor = {accepted:'#2ecc71', rejected:'#e74c3c', viewed:'var(--gold)'}[l.decision] || 'var(--text)';
+                  const ts = l.timestamp || l.created_at;
+                  const ruleText = l.rule_text || l.ruleText || '';
+                  return `
+                  <tr>
+                    <td style="white-space:nowrap;font-family:'Cinzel',serif;font-size:10px;color:var(--gold)">
+                      ${new Date(ts).toLocaleString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'})}
+                    </td>
+                    <td style="font-weight:700">${l.user_name||l.userName}</td>
+                    <td style="font-size:11px;color:var(--text-muted)">${l.user_email||l.userEmail}</td>
+                    <td style="font-size:12px;max-width:220px;white-space:normal">${ruleText.substring(0,80)}${ruleText.length>80?'…':''}</td>
+                    <td style="font-weight:700;color:${decColor};white-space:nowrap">${decLabel}</td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>`}
       </div>
-      ${DB.rules.length === 0
-        ? '<div class="empty-state"><div class="empty-icon">📜</div>Nessuna regola pubblicata</div>'
-        : DB.rules.map((r, i) => {
-          const acceptedCount = DB.rulesLog.filter(l => l.ruleId === r.id && l.decision === 'accepted').length;
-          const rejectedCount = DB.rulesLog.filter(l => l.ruleId === r.id && l.decision === 'rejected').length;
-          const viewedCount   = DB.rulesLog.filter(l => l.ruleId === r.id && l.decision === 'viewed').length;
-          return `
-          <div class="info-admin-row" style="flex-direction:column;gap:10px">
-            <div style="display:flex;align-items:flex-start;gap:12px;width:100%">
-              <div class="info-admin-num">${i+1}</div>
-              <div style="flex:1">
-                ${r.title ? `<div class="rule-title-badge" style="margin-bottom:6px">📋 ${r.title}</div>` : ''}
-                <div class="info-admin-text">${r.text}</div>
-                ${r.pdfData ? `<div style="margin-top:6px"><a class="rule-pdf-badge" href="${r.pdfData}" target="_blank">📄 ${r.pdfName||'PDF allegato'}</a></div>` : '<div style="font-size:11px;color:var(--text-muted);margin-top:4px">📎 Nessun PDF allegato</div>'}
-              </div>
-              <div class="info-admin-actions">
-                <button class="btn-sm btn-secondary" onclick="editAdminRule('${r.id}')">✏️ Modifica</button>
-                <button class="btn-sm btn-danger" onclick="deleteAdminRule('${r.id}')">🗑</button>
-              </div>
-            </div>
-            <div style="display:flex;gap:10px;padding-left:38px;flex-wrap:wrap">
-              <span style="font-size:11px;background:rgba(39,174,96,0.1);color:#2ecc71;padding:2px 10px;border-radius:10px;border:1px solid rgba(39,174,96,0.3)">✅ Accettate: ${acceptedCount}</span>
-              <span style="font-size:11px;background:rgba(231,76,60,0.1);color:#e74c3c;padding:2px 10px;border-radius:10px;border:1px solid rgba(231,76,60,0.3)">❌ Non accettate: ${rejectedCount}</span>
-              <span style="font-size:11px;background:rgba(201,162,39,0.1);color:var(--gold);padding:2px 10px;border-radius:10px;border:1px solid var(--border-gold)">👁 Visionate: ${viewedCount}</span>
-            </div>
-          </div>`;
-        }).join('')}
-    </div>
-
-    <!-- LOG -->
-    <div class="card">
-      <div class="card-title">📋 Log Accettazioni (${sortedLog.length} voci)</div>
-      ${sortedLog.length === 0
-        ? '<div class="empty-state"><div class="empty-icon">📋</div>Nessuna risposta registrata</div>'
-        : `<div class="table-wrap">
-          <table class="admin-exp-table">
-            <thead><tr>
-              <th>Data e Ora</th>
-              <th>Operatore</th>
-              <th>Email</th>
-              <th>Regola</th>
-              <th>Risposta</th>
-            </tr></thead>
-            <tbody>
-              ${sortedLog.map(l => {
-                const decLabel = {accepted:'✅ Accettato', rejected:'❌ Non Accettato', viewed:'👁 Visionato'}[l.decision] || l.decision;
-                const decColor = {accepted:'#2ecc71', rejected:'#e74c3c', viewed:'var(--gold)'}[l.decision] || 'var(--text)';
-                return `
-                <tr>
-                  <td style="white-space:nowrap;font-family:'Cinzel',serif;font-size:10px;color:var(--gold)">
-                    ${new Date(l.timestamp).toLocaleString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'})}
-                  </td>
-                  <td style="font-weight:700">${l.userName}</td>
-                  <td style="font-size:11px;color:var(--text-muted)">${l.userEmail}</td>
-                  <td style="font-size:12px;max-width:220px;white-space:normal">${l.ruleText.substring(0,80)}${l.ruleText.length>80?'…':''}</td>
-                  <td style="font-weight:700;color:${decColor};white-space:nowrap">${decLabel}</td>
-                </tr>`;
-              }).join('')}
-            </tbody>
-          </table>
-        </div>`}
-    </div>
-  `;
+    `;
+  } catch(e) { content.innerHTML = '<div class="empty-state">Errore caricamento regole</div>'; }
 }
 
 async function addAdminRule() {
@@ -3761,64 +3684,69 @@ async function addAdminRule() {
     pdfData = await fileToBase64(f);
     pdfName = f.name;
   }
-  DB.rules.push({ id: uuid(), title, text, pdfData, pdfName });
-  renderAdminRules(document.getElementById('content'));
-  showToast('Regola pubblicata ✓');
+  try {
+    await apiFetch('/rules', { method: 'POST', body: JSON.stringify({ title, text, pdf_data: pdfData, pdf_name: pdfName }) });
+    await renderAdminRules(document.getElementById('content'));
+    showToast('Regola pubblicata ✓');
+  } catch(e) { showToast('Errore pubblicazione regola', 'error'); }
 }
 
-function editAdminRule(id) {
-  const rule = DB.rules.find(r => r.id === id);
-  if (!rule) return;
-  openModal(`
-    <div class="modal-title">
-      <span>✏️ Modifica Regola</span>
-      <span class="modal-close" onclick="closeModalDirect()">✕</span>
-    </div>
-    <div class="form-grid" style="margin-bottom:14px">
-      <div class="field-group full">
-        <div class="field-label">📋 Titolo</div>
-        <input class="field-input" id="edit-rule-title" value="${rule.title||''}">
+async function editAdminRule(id) {
+  try {
+    const rules = await apiFetch('/rules');
+    const rule = rules.find(r => r.id === id);
+    if (!rule) return;
+    openModal(`
+      <div class="modal-title">
+        <span>✏️ Modifica Regola</span>
+        <span class="modal-close" onclick="closeModalDirect()">✕</span>
       </div>
-      <div class="field-group full">
-        <div class="field-label">📝 Testo Regola</div>
-        <textarea class="field-input" id="edit-rule-text" style="min-height:100px">${rule.text}</textarea>
+      <div class="form-grid" style="margin-bottom:14px">
+        <div class="field-group full">
+          <div class="field-label">📋 Titolo</div>
+          <input class="field-input" id="edit-rule-title" value="${rule.title||''}">
+        </div>
+        <div class="field-group full">
+          <div class="field-label">📝 Testo Regola</div>
+          <textarea class="field-input" id="edit-rule-text" style="min-height:100px">${rule.text}</textarea>
+        </div>
+        <div class="field-group full">
+          <div class="field-label">📄 ${rule.pdf_data ? 'Sostituisci PDF (opzionale)' : 'Allega PDF (opzionale)'}</div>
+          ${rule.pdf_data ? `<div style="margin-bottom:8px"><a class="rule-pdf-badge" href="${rule.pdf_data}" target="_blank">📄 ${rule.pdf_name||'PDF attuale'}</a></div>` : ''}
+          <input type="file" id="edit-rule-pdf" accept=".pdf" style="color:var(--text-muted);font-size:13px">
+          ${rule.pdf_data ? `<label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;color:var(--text-muted);cursor:pointer">
+            <input type="checkbox" id="remove-rule-pdf"> Rimuovi PDF allegato</label>` : ''}
+        </div>
       </div>
-      <div class="field-group full">
-        <div class="field-label">📄 ${rule.pdfData ? 'Sostituisci PDF (opzionale)' : 'Allega PDF (opzionale)'}</div>
-        ${rule.pdfData ? `<div style="margin-bottom:8px"><a class="rule-pdf-badge" href="${rule.pdfData}" target="_blank">📄 ${rule.pdfName||'PDF attuale'}</a></div>` : ''}
-        <input type="file" id="edit-rule-pdf" accept=".pdf" style="color:var(--text-muted);font-size:13px">
-        ${rule.pdfData ? `<label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;color:var(--text-muted);cursor:pointer">
-          <input type="checkbox" id="remove-rule-pdf"> Rimuovi PDF allegato</label>` : ''}
+      <div class="btn-row">
+        <button class="btn-sm btn-primary" onclick="saveAdminRule('${id}')">💾 Salva</button>
+        <button class="btn-sm btn-secondary" onclick="closeModalDirect()">Annulla</button>
       </div>
-    </div>
-    <div class="btn-row">
-      <button class="btn-sm btn-primary" onclick="saveAdminRule('${id}')">💾 Salva</button>
-      <button class="btn-sm btn-secondary" onclick="closeModalDirect()">Annulla</button>
-    </div>
-  `);
+    `);
+  } catch(e) { showToast('Errore', 'error'); }
 }
 
 async function saveAdminRule(id) {
-  const rule = DB.rules.find(r => r.id === id);
   const title = document.getElementById('edit-rule-title')?.value.trim();
   const text  = document.getElementById('edit-rule-text')?.value.trim();
   const pdfEl = document.getElementById('edit-rule-pdf');
   const remove = document.getElementById('remove-rule-pdf')?.checked;
-  if (!rule) return;
   if (!title) { showToast('Inserisci il titolo', 'error'); return; }
   if (!text)  { showToast('Il testo non può essere vuoto', 'error'); return; }
-  rule.title = title;
-  rule.text  = text;
-  if (remove) { rule.pdfData = null; rule.pdfName = null; }
+  let pdfData = undefined, pdfName = undefined;
+  if (remove) { pdfData = null; pdfName = null; }
   else if (pdfEl?.files[0]) {
     const f = pdfEl.files[0];
     if (f.size > 5242880) { showToast('PDF troppo grande (max 5MB)', 'error'); return; }
-    rule.pdfData = await fileToBase64(f);
-    rule.pdfName = f.name;
+    pdfData = await fileToBase64(f);
+    pdfName = f.name;
   }
-  closeModalDirect();
-  renderAdminRules(document.getElementById('content'));
-  showToast('Regola aggiornata ✓');
+  try {
+    await apiFetch(`/rules/${id}`, { method: 'PUT', body: JSON.stringify({ title, text, pdf_data: pdfData, pdf_name: pdfName }) });
+    closeModalDirect();
+    await renderAdminRules(document.getElementById('content'));
+    showToast('Regola aggiornata ✓');
+  } catch(e) { showToast('Errore aggiornamento regola', 'error'); }
 }
 
 function deleteAdminRule(id) {
@@ -3838,79 +3766,73 @@ function deleteAdminRule(id) {
   `);
 }
 
-function confirmDeleteAdminRule(id) {
-  DB.rules = DB.rules.filter(r => r.id !== id);
-  DB.rulesLog = DB.rulesLog.filter(l => l.ruleId !== id);
-  closeModalDirect();
-  renderAdminRules(document.getElementById('content'));
-  showToast('Regola eliminata', 'error');
+async function confirmDeleteAdminRule(id) {
+  try {
+    await apiFetch(`/rules/${id}`, { method: 'DELETE' });
+    closeModalDirect();
+    await renderAdminRules(document.getElementById('content'));
+    showToast('Regola eliminata', 'error');
+  } catch(e) { showToast('Errore eliminazione regola', 'error'); }
 }
 
 // ===== INCOMING MESSAGES — REPLY =====
-function replyToOperator(msgId) {
-  const m = DB.incomingMessages.find(x => x.id === msgId);
-  if (!m) return;
-  openModal(`
-    <div class="modal-title">
-      <span>✉️ Rispondi a ${m.fromName}</span>
-      <span class="modal-close" onclick="closeModalDirect()">✕</span>
-    </div>
-    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:14px;font-size:13px;color:var(--text-muted)">
-      <strong style="color:var(--text)">Messaggio originale:</strong><br>${m.testo}
-    </div>
-    <div class="field-group" style="margin-bottom:20px">
-      <div class="field-label">La tua risposta</div>
-      <textarea class="field-input" id="modal-reply-text" style="min-height:90px"
-        placeholder="Scrivi la risposta...">${m.reply||''}</textarea>
-    </div>
-    <div class="btn-row">
-      <button class="btn-sm btn-primary" onclick="confirmReply('${msgId}')">✉️ Invia Risposta</button>
-      <button class="btn-sm btn-secondary" onclick="closeModalDirect()">Annulla</button>
-    </div>
-  `);
+async function replyToOperator(msgId) {
+  try {
+    const incoming = await apiFetch('/incoming-messages');
+    const m = incoming.find(x => x.id === msgId);
+    if (!m) return;
+    openModal(`
+      <div class="modal-title">
+        <span>✉️ Rispondi a ${m.from_name||m.fromName}</span>
+        <span class="modal-close" onclick="closeModalDirect()">✕</span>
+      </div>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:14px;font-size:13px;color:var(--text-muted)">
+        <strong style="color:var(--text)">Messaggio originale:</strong><br>${m.testo}
+      </div>
+      <div class="field-group" style="margin-bottom:20px">
+        <div class="field-label">La tua risposta</div>
+        <textarea class="field-input" id="modal-reply-text" style="min-height:90px"
+          placeholder="Scrivi la risposta...">${m.reply||''}</textarea>
+      </div>
+      <div class="btn-row">
+        <button class="btn-sm btn-primary" onclick="confirmReply('${msgId}')">✉️ Invia Risposta</button>
+        <button class="btn-sm btn-secondary" onclick="closeModalDirect()">Annulla</button>
+      </div>
+    `);
+  } catch(e) { showToast('Errore', 'error'); }
 }
 
-function sendReplyToOperator(msgId) {
+async function sendReplyToOperator(msgId) {
   const text = document.getElementById('reply-' + msgId)?.value.trim();
   if (!text) { showToast('Scrivi una risposta', 'error'); return; }
-  const m = DB.incomingMessages.find(x => x.id === msgId);
-  if (!m) return;
-  m.reply   = text;
-  m.replyAt = new Date().toISOString();
-  renderAdminComms(document.getElementById('content'));
-  showToast('Risposta inviata ✓');
+  try {
+    await apiFetch(`/incoming-messages/${msgId}/reply`, { method: 'PUT', body: JSON.stringify({ reply: text }) });
+    await renderAdminComms(document.getElementById('content'));
+    showToast('Risposta inviata ✓');
+  } catch(e) { showToast('Errore invio risposta', 'error'); }
 }
 
-function confirmReply(msgId) {
+async function confirmReply(msgId) {
   const text = document.getElementById('modal-reply-text')?.value.trim();
   if (!text) { showToast('Scrivi una risposta', 'error'); return; }
-  const m = DB.incomingMessages.find(x => x.id === msgId);
-  if (!m) return;
-  m.reply   = text;
-  m.replyAt = new Date().toISOString();
-  closeModalDirect();
-  renderAdminComms(document.getElementById('content'));
-  showToast('Risposta inviata ✓');
+  try {
+    await apiFetch(`/incoming-messages/${msgId}/reply`, { method: 'PUT', body: JSON.stringify({ reply: text }) });
+    closeModalDirect();
+    await renderAdminComms(document.getElementById('content'));
+    showToast('Risposta inviata ✓');
+  } catch(e) { showToast('Errore invio risposta', 'error'); }
 }
 
 // ===== USER SEND MESSAGE TO ADMIN =====
-function sendMessageToAdmin() {
-  const u    = currentUser;
+async function sendMessageToAdmin() {
   const text = document.getElementById('user-to-admin-text')?.value.trim();
   if (!text) { showToast('Scrivi il messaggio prima di inviare', 'error'); return; }
-  DB.incomingMessages.push({
-    id:         uuid(),
-    fromUserId: u.id,
-    fromName:   `${u.nome||''} ${u.cognome||''}`.trim() || u.email,
-    fromEmail:  u.email,
-    testo:      text,
-    created_at: new Date().toISOString(),
-    reply:      null,
-    replyAt:    null
-  });
-  document.getElementById('user-to-admin-text').value = '';
-  showToast("Messaggio inviato all'amministratore ✓");
-  renderUserDashboard(document.getElementById('content'));
+  try {
+    await apiFetch('/incoming-messages', { method: 'POST', body: JSON.stringify({ testo: text }) });
+    document.getElementById('user-to-admin-text').value = '';
+    showToast("Messaggio inviato all'amministratore ✓");
+    await renderUserDashboard(document.getElementById('content'));
+  } catch(e) { showToast('Errore invio messaggio', 'error'); }
 }
 
 

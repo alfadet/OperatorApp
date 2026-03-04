@@ -1636,16 +1636,27 @@ async function moveAdminRule(id, direction) {
   } catch(e) { showToast('Errore riordinamento', 'error'); }
 }
 
+async function adminDeleteIncoming(id) {
+  if(!confirm('Eliminare questo messaggio?')) return;
+  try {
+    await apiFetch(`/incoming-messages/${id}`, { method:'DELETE' });
+    showToast('Messaggio eliminato');
+    renderAdminHome(document.getElementById('content'));
+  } catch(e) { showToast('Errore eliminazione', 'error'); }
+}
+
 async function renderAdminHome(content) {
   try {
-    const [users, expenses] = await Promise.all([
+    const [users, expenses, incoming] = await Promise.all([
       apiFetch('/users'),
-      apiFetch('/expenses')
+      apiFetch('/expenses'),
+      apiFetch('/incoming-messages')
     ]);
     const operators = users.filter(u => !u.is_admin);
     const unpaid = expenses.filter(e => !e.pagato);
+    const paid = expenses.filter(e => e.pagato === true);
     content.innerHTML = `
-      <div class="card" style="text-align:center;background:linear-gradient(135deg,var(--bg2),#0a0800);border-color:rgba(184,152,90,0.4)">
+      <div class="card" style="text-align:center;background:linear-gradient(135deg,var(--bg2),#0a0800);border-color:rgba(184,152,90,0.4);margin-bottom:20px">
         <div style="font-family:'Cinzel',serif;font-size:1.5rem;color:var(--gold);letter-spacing:3px;margin-bottom:8px">
           AD Security
         </div>
@@ -1653,28 +1664,54 @@ async function renderAdminHome(content) {
           Sistema Professionale Gestione Alfa Security
         </div>
         <div style="font-size:1.1rem;color:var(--text);margin-bottom:28px">Benvenuto Admin</div>
-        <div style="display:flex;justify-content:center;gap:20px;flex-wrap:wrap;margin-bottom:32px">
-          <div class="card" style="min-width:130px;padding:18px 24px;text-align:center;flex:1;max-width:180px">
+        <div style="display:flex;justify-content:center;gap:16px;flex-wrap:wrap;margin-bottom:32px">
+          <div class="card" style="min-width:120px;padding:16px 20px;text-align:center;flex:1;max-width:160px">
             <div style="font-size:2rem;font-weight:700;color:var(--gold)">${operators.length}</div>
-            <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Operatori Iscritti</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Operatori Iscritti</div>
           </div>
-          <div class="card" style="min-width:130px;padding:18px 24px;text-align:center;flex:1;max-width:180px">
+          <div class="card" style="min-width:120px;padding:16px 20px;text-align:center;flex:1;max-width:160px">
             <div style="font-size:2rem;font-weight:700;color:#e74c3c">${unpaid.length}</div>
-            <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Rimborsi in Attesa</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Spese Da Pagare</div>
           </div>
-          <div class="card" style="min-width:130px;padding:18px 24px;text-align:center;flex:1;max-width:180px">
-            <div style="font-size:2rem;font-weight:700;color:#2ecc71">${expenses.length}</div>
-            <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Rimborsi Totali</div>
+          <div class="card" style="min-width:120px;padding:16px 20px;text-align:center;flex:1;max-width:160px">
+            <div style="font-size:2rem;font-weight:700;color:#2ecc71">${paid.length}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Spese Contabilizzate</div>
+          </div>
+          <div class="card" style="min-width:120px;padding:16px 20px;text-align:center;flex:1;max-width:160px">
+            <div style="font-size:2rem;font-weight:700;color:#3498db">${incoming.length}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Messaggi Ricevuti</div>
           </div>
         </div>
         <div style="display:flex;justify-content:center;gap:16px;flex-wrap:wrap">
-          <button class="btn-primary" style="font-size:1.1rem;padding:18px 32px;flex:1;max-width:240px" onclick="showAdminPage('preventivi',this)">
+          <button class="btn-primary" style="font-size:1.1rem;padding:18px 32px;flex:1;max-width:240px" onclick="showAdminPage('preventivi',document.getElementById('nav-preventivi'))">
             📋 Preventivi
           </button>
-          <button class="btn-primary" style="font-size:1.1rem;padding:18px 32px;flex:1;max-width:240px" onclick="showAdminPage('report',this)">
+          <button class="btn-primary" style="font-size:1.1rem;padding:18px 32px;flex:1;max-width:240px" onclick="showAdminPage('reportmese',document.getElementById('nav-reportmese'))">
             📊 Report Mese
           </button>
         </div>
+      </div>
+
+      <div class="card" style="border-color:rgba(52,152,219,0.4)">
+        <div class="card-title" style="border-bottom-color:rgba(52,152,219,0.3)">
+          📨 Messaggi dagli Operatori (${incoming.length})
+        </div>
+        ${incoming.length === 0
+          ? '<div style="color:var(--text-muted);font-size:13px;padding:10px 0">Nessun messaggio ricevuto</div>'
+          : incoming.map(m => `
+            <div class="incoming-msg-item" style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+                <div>
+                  <span style="font-weight:600;color:var(--gold)">${m.from_name||m.from_email}</span>
+                  <span style="color:var(--text-muted);font-size:11px;margin-left:8px">${fmt(m.created_at)}</span>
+                  ${m.reply ? '<span style="font-size:10px;background:rgba(46,204,113,0.15);color:#2ecc71;border:1px solid rgba(46,204,113,0.3);padding:1px 7px;border-radius:8px;margin-left:6px">✓ Risposto</span>' : '<span style="font-size:10px;background:rgba(231,76,60,0.15);color:#e74c3c;border:1px solid rgba(231,76,60,0.3);padding:1px 7px;border-radius:8px;margin-left:6px">Non risposto</span>'}
+                </div>
+                <button class="btn-sm btn-danger" style="font-size:10px;padding:3px 8px;flex-shrink:0" onclick="adminDeleteIncoming('${m.id}')">🗑</button>
+              </div>
+              <div style="margin-top:6px;font-size:13px;color:var(--text)">${m.testo}</div>
+              ${m.reply ? `<div style="margin-top:6px;font-size:12px;color:var(--text-muted);font-style:italic;padding-left:10px;border-left:2px solid rgba(46,204,113,0.4)">Risposta: ${m.reply}</div>` : ''}
+            </div>`).join('')
+        }
       </div>`;
   } catch(e) {
     content.innerHTML = '<div class="card">Errore caricamento dashboard</div>';

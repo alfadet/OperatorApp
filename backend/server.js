@@ -265,6 +265,13 @@ app.put('/api/incoming-messages/:id/reply', auth, adminOnly, async (req, res) =>
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.delete('/api/incoming-messages/:id', auth, adminOnly, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM incoming_messages WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── DOCUMENTS ─────────────────────────────────────────────────────────────────
 app.get('/api/documents/:userId', auth, async (req, res) => {
   try {

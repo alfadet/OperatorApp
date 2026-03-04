@@ -1341,7 +1341,10 @@ function syncThemeToggle() {
 function buildAdminUI() {
   const sidebar = document.getElementById('sidebar');
   sidebar.innerHTML = `
-    <div class="nav-item active" onclick="showAdminPage('users',this)" id="nav-users">
+    <div class="nav-item active" onclick="showAdminPage('home',this)" id="nav-home">
+      <span class="nav-icon">🏠</span> Home
+    </div>
+    <div class="nav-item" onclick="showAdminPage('users',this)" id="nav-users">
       <span class="nav-icon">👥</span> Utenti
     </div>
     <div class="nav-item" onclick="showAdminPage('expenses',this)" id="nav-admin-expenses">
@@ -1383,7 +1386,7 @@ function buildAdminUI() {
       <div class="t-pill" id="t-pill"><div class="t-pill-dot"></div></div>
     </div>
   `;
-  showAdminPage('users', document.getElementById('nav-users'));
+  showAdminPage('home', document.getElementById('nav-home'));
   syncThemeToggle();
 }
 
@@ -1391,7 +1394,8 @@ function showAdminPage(page, el) {
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   el.classList.add('active');
   const content = document.getElementById('content');
-  if(page==='users') renderAdminUsers(content,'');
+  if(page==='home') renderAdminHome(content);
+  else if(page==='users') renderAdminUsers(content,'');
   else if(page==='expenses') renderAdminExpenses(content);
   else if(page==='admininfo') renderAdminInfo(content);
   else if(page==='adminrules') renderAdminRules(content);
@@ -1453,6 +1457,7 @@ async function renderAdminUsers(content, searchQ) {
       </div>`}
     </div>
   `;
+  if(searchQ) { const si=document.getElementById('user-search-inp'); if(si){si.focus();si.setSelectionRange(si.value.length,si.value.length);} }
   } catch(e) { content.innerHTML = `<div class="empty-state">Errore caricamento utenti</div>`; }
 }
 
@@ -1613,6 +1618,67 @@ function formatCountdown(expires_at) {
   const m = Math.floor((diff % 3600000) / 60000);
   if(h > 0) return `${h}h ${m}m rimanenti`;
   return `${m} minuti rimanenti`;
+}
+
+async function adminDeleteMessage(id) {
+  if(!confirm('Eliminare questo messaggio inviato?')) return;
+  try {
+    await apiFetch(`/messages/${id}`, { method:'DELETE' });
+    showToast('Messaggio eliminato');
+    renderAdminComms(document.getElementById('content'));
+  } catch(e) { showToast('Errore eliminazione', 'error'); }
+}
+
+async function moveAdminRule(id, direction) {
+  try {
+    await apiFetch(`/rules/${id}/move`, { method:'PATCH', body: JSON.stringify({direction}) });
+    renderAdminRules(document.getElementById('content'));
+  } catch(e) { showToast('Errore riordinamento', 'error'); }
+}
+
+async function renderAdminHome(content) {
+  try {
+    const [users, expenses] = await Promise.all([
+      apiFetch('/users'),
+      apiFetch('/expenses')
+    ]);
+    const operators = users.filter(u => !u.is_admin);
+    const unpaid = expenses.filter(e => !e.pagato);
+    content.innerHTML = `
+      <div class="card" style="text-align:center;background:linear-gradient(135deg,var(--bg2),#0a0800);border-color:rgba(184,152,90,0.4)">
+        <div style="font-family:'Cinzel',serif;font-size:1.5rem;color:var(--gold);letter-spacing:3px;margin-bottom:8px">
+          AD Security
+        </div>
+        <div style="font-family:'Cinzel',serif;font-size:1.1rem;color:var(--text-muted);letter-spacing:2px;margin-bottom:20px">
+          Sistema Professionale Gestione Alfa Security
+        </div>
+        <div style="font-size:1.1rem;color:var(--text);margin-bottom:28px">Benvenuto Admin</div>
+        <div style="display:flex;justify-content:center;gap:20px;flex-wrap:wrap;margin-bottom:32px">
+          <div class="card" style="min-width:130px;padding:18px 24px;text-align:center;flex:1;max-width:180px">
+            <div style="font-size:2rem;font-weight:700;color:var(--gold)">${operators.length}</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Operatori Iscritti</div>
+          </div>
+          <div class="card" style="min-width:130px;padding:18px 24px;text-align:center;flex:1;max-width:180px">
+            <div style="font-size:2rem;font-weight:700;color:#e74c3c">${unpaid.length}</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Rimborsi in Attesa</div>
+          </div>
+          <div class="card" style="min-width:130px;padding:18px 24px;text-align:center;flex:1;max-width:180px">
+            <div style="font-size:2rem;font-weight:700;color:#2ecc71">${expenses.length}</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Rimborsi Totali</div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:center;gap:16px;flex-wrap:wrap">
+          <button class="btn-primary" style="font-size:1.1rem;padding:18px 32px;flex:1;max-width:240px" onclick="showAdminPage('preventivi',this)">
+            📋 Preventivi
+          </button>
+          <button class="btn-primary" style="font-size:1.1rem;padding:18px 32px;flex:1;max-width:240px" onclick="showAdminPage('report',this)">
+            📊 Report Mese
+          </button>
+        </div>
+      </div>`;
+  } catch(e) {
+    content.innerHTML = '<div class="card">Errore caricamento dashboard</div>';
+  }
 }
 
 async function sendUrgentMessage() {
@@ -1819,14 +1885,16 @@ async function renderAdminComms(content) {
         ${messages.length===0 ? '<div style="color:var(--text-muted);font-size:13px">Nessun messaggio inviato</div>' :
           `<div class="msg-feed">${messages.slice().reverse().map(m=>`
             <div class="msg-item">
-              <div class="msg-meta">
-                ${m.is_broadcast ? '📢 Broadcast' : `✉️ A: ${users.find(u=>u.id===m.target_user_id)?.email||'Utente rimosso'}`}
-                — ${fmt(m.created_at)}
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+                <div class="msg-meta">
+                  ${m.is_broadcast ? '📢 Broadcast' : `✉️ A: ${users.find(u=>u.id===m.target_user_id)?.email||'Utente rimosso'}`}
+                  — ${fmt(m.created_at)}
+                </div>
+                <button class="btn-sm btn-danger" style="font-size:10px;padding:3px 8px;flex-shrink:0" onclick="adminDeleteMessage('${m.id}')">🗑 Elimina</button>
               </div>
               <div class="msg-text">${m.testo||''}</div>
               ${m.file_data?`<div class="msg-file"><a href="${m.file_data}" download="${m.nome_file}">📎 ${m.nome_file}</a></div>`:''}
             </div>`).join('')}</div>`
-        }
       </div>
     </div>
 
@@ -2417,15 +2485,17 @@ async function renderUserExpenses(content) {
               max="${now.toISOString().split('T')[0]}">
           </div>
           <div class="field-group" style="display:flex;flex-direction:column;justify-content:flex-end">
-            <div class="field-label">🚗 Modalità Trasporto</div>
-            <label class="solo-checkbox-wrap" id="solo-wrap" onclick="toggleSolo()">
-              <input type="checkbox" id="exp-solo">
-              <div class="custom-checkbox" id="solo-check-icon"></div>
-              <div>
-                <div class="solo-label">Sono andato da solo!</div>
-                <div class="solo-sublabel">Seleziona se hai utilizzato il mezzo proprio</div>
-              </div>
-            </label>
+            <div class="field-label">🚗 Modalità Trasporto (mezzo proprio)</div>
+            <div style="display:flex;gap:10px;margin-top:8px">
+              <button type="button" id="solo-si" onclick="setSolo(true)"
+                style="flex:1;padding:10px;border-radius:8px;border:2px solid var(--border);background:var(--bg3);color:var(--text-muted);font-weight:700;cursor:pointer;font-size:13px">
+                ✅ Sì
+              </button>
+              <button type="button" id="solo-no" onclick="setSolo(false)"
+                style="flex:1;padding:10px;border-radius:8px;border:2px solid var(--border-gold);background:rgba(201,162,39,0.1);color:var(--gold);font-weight:700;cursor:pointer;font-size:13px">
+                ❌ No
+              </button>
+            </div>
           </div>
         </div>
         <div class="field-group" style="margin-bottom:16px">
@@ -2474,17 +2544,17 @@ async function renderUserExpenses(content) {
 }
 
 let soloChecked = false;
-function toggleSolo() {
-  soloChecked = !soloChecked;
-  const wrap = document.getElementById('solo-wrap');
-  const icon = document.getElementById('solo-check-icon');
-  if(!wrap || !icon) return;
-  if(soloChecked) {
-    wrap.classList.add('checked');
-    icon.textContent = '✓';
+function setSolo(val) {
+  soloChecked = val;
+  const si = document.getElementById('solo-si');
+  const no = document.getElementById('solo-no');
+  if(!si || !no) return;
+  if(val) {
+    si.style.borderColor = 'var(--border-gold)'; si.style.background = 'rgba(201,162,39,0.15)'; si.style.color = 'var(--gold)';
+    no.style.borderColor = 'var(--border)'; no.style.background = 'var(--bg3)'; no.style.color = 'var(--text-muted)';
   } else {
-    wrap.classList.remove('checked');
-    icon.textContent = '';
+    no.style.borderColor = 'var(--border-gold)'; no.style.background = 'rgba(201,162,39,0.1)'; no.style.color = 'var(--gold)';
+    si.style.borderColor = 'var(--border)'; si.style.background = 'var(--bg3)'; si.style.color = 'var(--text-muted)';
   }
 }
 
@@ -2497,7 +2567,7 @@ async function submitExpense() {
   if(!data)  { showToast('Inserisci la data del servizio', 'error'); return; }
   try {
     await apiFetch('/expenses', { method:'POST', body: JSON.stringify({luogo, data, solo_guida: soloGuida, note}) });
-    soloChecked = false;
+    soloChecked = false; setSolo(false);
     showToast('Spesa salvata ✓');
     renderUserExpenses(document.getElementById('content'));
   } catch(e) { showToast('Errore salvataggio', 'error'); }
@@ -3636,7 +3706,11 @@ async function renderAdminRules(content) {
                   <div class="info-admin-text">${r.text}</div>
                   ${r.pdf_data ? `<div style="margin-top:6px"><a class="rule-pdf-badge" href="${r.pdf_data}" target="_blank">📄 ${r.pdf_name||'PDF allegato'}</a></div>` : '<div style="font-size:11px;color:var(--text-muted);margin-top:4px">📎 Nessun PDF allegato</div>'}
                 </div>
-                <div class="info-admin-actions">
+                <div class="info-admin-actions" style="display:flex;flex-direction:column;gap:4px">
+                  <div style="display:flex;gap:4px">
+                    <button class="btn-sm btn-secondary" style="padding:3px 7px;font-size:13px" onclick="moveAdminRule('${r.id}','up')" ${i===0?'disabled':''}>⬆️</button>
+                    <button class="btn-sm btn-secondary" style="padding:3px 7px;font-size:13px" onclick="moveAdminRule('${r.id}','down')" ${i===rules.length-1?'disabled':''}>⬇️</button>
+                  </div>
                   <button class="btn-sm btn-secondary" onclick="editAdminRule('${r.id}')">✏️ Modifica</button>
                   <button class="btn-sm btn-danger" onclick="deleteAdminRule('${r.id}')">🗑</button>
                 </div>

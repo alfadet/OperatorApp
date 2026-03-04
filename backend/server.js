@@ -198,6 +198,13 @@ app.delete('/api/messages/:id/delete', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.delete('/api/messages/:id', auth, adminOnly, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM messages WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/messages', auth, adminOnly, async (req, res) => {
   try {
     const { testo, nome_file, mime_type, file_data, is_broadcast, target_user_id } = req.body;
@@ -331,8 +338,26 @@ app.delete('/api/info-items/:id', auth, adminOnly, async (req, res) => {
 // ── RULES ─────────────────────────────────────────────────────────────────────
 app.get('/api/rules', auth, async (req, res) => {
   try {
-    const r = await pool.query('SELECT * FROM rules ORDER BY created_at');
+    const r = await pool.query('SELECT * FROM rules ORDER BY sort_order ASC, created_at ASC');
     res.json(r.rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.patch('/api/rules/:id/move', auth, adminOnly, async (req, res) => {
+  try {
+    const { direction } = req.body;
+    const all = await pool.query('SELECT id, sort_order FROM rules ORDER BY sort_order ASC, created_at ASC');
+    const rows = all.rows;
+    const idx = rows.findIndex(r => r.id === req.params.id);
+    if (idx < 0) return res.status(404).json({ error: 'Not found' });
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= rows.length) return res.json({ ok: true });
+    const a = rows[idx], b = rows[swapIdx];
+    const soA = a.sort_order === b.sort_order ? idx : a.sort_order;
+    const soB = b.sort_order === a.sort_order ? swapIdx : b.sort_order;
+    await pool.query('UPDATE rules SET sort_order=$1 WHERE id=$2', [soB, a.id]);
+    await pool.query('UPDATE rules SET sort_order=$1 WHERE id=$2', [soA, b.id]);
+    res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -340,9 +365,11 @@ app.post('/api/rules', auth, adminOnly, async (req, res) => {
   try {
     const { title, text, pdf_data, pdf_name } = req.body;
     const id = uuidv4();
+    const maxOrd = await pool.query('SELECT COALESCE(MAX(sort_order),0)+1 AS next FROM rules');
+    const sortOrder = maxOrd.rows[0].next;
     const r = await pool.query(
-      'INSERT INTO rules (id,title,text,pdf_data,pdf_name,created_at) VALUES ($1,$2,$3,$4,$5,NOW()) RETURNING *',
-      [id, title, text, pdf_data || null, pdf_name || null]
+      'INSERT INTO rules (id,title,text,pdf_data,pdf_name,sort_order,created_at) VALUES ($1,$2,$3,$4,$5,$6,NOW()) RETURNING *',
+      [id, title, text, pdf_data || null, pdf_name || null, sortOrder]
     );
     res.json(r.rows[0]);
   } catch (e) { res.status(500).json({ error: e.message }); }

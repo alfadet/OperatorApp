@@ -178,12 +178,23 @@ app.get('/api/messages', auth, async (req, res) => {
       r = await pool.query(
         `SELECT m.*, array_agg(mr.user_id) FILTER (WHERE mr.user_id IS NOT NULL) as read_by
          FROM messages m LEFT JOIN message_reads mr ON m.id=mr.message_id
-         WHERE m.is_broadcast=TRUE OR m.target_user_id=$1
+         WHERE (m.is_broadcast=TRUE OR m.target_user_id=$1)
+           AND m.id NOT IN (SELECT message_id FROM message_deletions WHERE user_id=$1)
          GROUP BY m.id ORDER BY m.created_at DESC`,
         [req.user.id]
       );
     }
     res.json(r.rows.map(m => ({ ...m, read_by: m.read_by || [] })));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/messages/:id/delete', auth, async (req, res) => {
+  try {
+    await pool.query(
+      'INSERT INTO message_deletions (message_id,user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
+      [req.params.id, req.user.id]
+    );
+    res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

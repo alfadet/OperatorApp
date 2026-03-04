@@ -42,6 +42,12 @@ CREATE TABLE IF NOT EXISTS message_reads (
   PRIMARY KEY (message_id, user_id)
 );
 
+CREATE TABLE IF NOT EXISTS message_deletions (
+  message_id VARCHAR(36) REFERENCES messages(id) ON DELETE CASCADE,
+  user_id VARCHAR(36) REFERENCES users(id) ON DELETE CASCADE,
+  PRIMARY KEY (message_id, user_id)
+);
+
 CREATE TABLE IF NOT EXISTS incoming_messages (
   id VARCHAR(36) PRIMARY KEY,
   from_user_id VARCHAR(36) REFERENCES users(id) ON DELETE CASCADE,

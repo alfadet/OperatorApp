@@ -1519,7 +1519,7 @@ async function adminViewUser(id) {
                 </div>
               </div>
               <div style="font-size:11px;margin-bottom:${e.note?'6px':'0'}">
-                ${e.soloGuida
+                ${(e.solo_guida||e.soloGuida)
                   ? `<span style="color:var(--gold);background:rgba(201,162,39,0.1);padding:2px 8px;border-radius:10px;border:1px solid var(--border-gold)">🚗 Solo</span>`
                   : `<span style="color:var(--text-muted);background:var(--bg4);padding:2px 8px;border-radius:10px;border:1px solid var(--border)">👥 Con altri</span>`}
               </div>
@@ -1884,7 +1884,7 @@ async function sendBroadcast() {
   let file_data=null, nome_file=null, mime_type=null;
   if(fileEl.files[0]) {
     const f = fileEl.files[0];
-    if(f.size > 512000) { showToast('File troppo grande (max 500KB)','error'); return; }
+    if(f.size > 1048576) { showToast('File troppo grande (max 500KB)','error'); return; }
     file_data = await fileToBase64(f);
     nome_file = f.name; mime_type = f.type;
   }
@@ -1906,7 +1906,7 @@ async function sendSingle() {
   let file_data=null, nome_file=null, mime_type=null;
   if(fileEl.files[0]) {
     const f = fileEl.files[0];
-    if(f.size > 512000) { showToast('File troppo grande (max 500KB)','error'); return; }
+    if(f.size > 1048576) { showToast('File troppo grande (max 500KB)','error'); return; }
     file_data = await fileToBase64(f);
     nome_file = f.name; mime_type = f.type;
   }
@@ -1989,7 +1989,7 @@ async function renderUserDashboard(content) {
       apiFetch('/urgent-messages'),
       apiFetch('/rules'),
       apiFetch('/rules-log'),
-      apiFetch('/incoming-messages')
+      apiFetch('/incoming-messages/mine')
     ]);
     activeUrgent = urgentAll.filter(m => new Date(m.expires_at) > new Date());
     docsUploaded = Object.keys(docs).length;
@@ -2000,8 +2000,7 @@ async function renderUserDashboard(content) {
     unread = unreadMsgs.length;
     rulesPending = rules.filter(r => !rulesLog.find(l => (l.userId||l.user_id) === u.id && (l.ruleId||l.rule_id) === r.id)).length;
     sentToAdmin = incomingAll.filter(m => (m.fromUserId||m.from_user_id) === u.id)
-      .slice().sort((a,b) => new Date(b.created_at)-new Date(a.created_at)).slice(0,3);
-  } catch(e) {}
+    sentToAdmin = incomingAll.slice().sort((a,b) => new Date(b.created_at)-new Date(a.created_at)).slice(0,3);
 
   content.innerHTML = `
     <!-- URGENT MESSAGES — always on top, full width -->
@@ -2271,8 +2270,8 @@ async function handleDocUpload(k, el) {
     errEl.textContent = '⚠️ Formato non supportato. Usa JPG, PNG o PDF.';
     errEl.classList.add('show'); el.value=''; return;
   }
-  if(f.size > 512000) {
-    errEl.innerHTML = `❌ <strong>Cambia risoluzione alla tua foto, questa è troppo pesante per il sistema!</strong><br>
+  if(f.size > 1048576) {
+    errEl.innerHTML = `❌ <strong>Cambia risoluzione alla tua foto, questa è troppo grande (max 1MB)!</strong><br>
     Ti consigliamo di trasformarla in file PDF oppure di modificare il setup del tuo smartphone e riprovare.`;
     errEl.classList.add('show'); el.value=''; return;
   }
@@ -2318,9 +2317,6 @@ async function markMessageRead(id) {
 async function renderUserMessages(content) {
   try {
     const msgs = await apiFetch('/messages');
-    // Mark all as read
-    msgs.forEach(m => markMessageRead(m.id));
-    // Update badge
     const navMsg = document.getElementById('nav-msgs');
     if(navMsg) navMsg.innerHTML = '<span class="nav-icon">📬</span> Messaggi';
     content.innerHTML = `
@@ -2328,19 +2324,41 @@ async function renderUserMessages(content) {
       <div class="card-title">📬 Messaggi (${msgs.length})</div>
       ${msgs.length===0 ? '<div class="empty-state"><div class="empty-icon">📭</div>Nessun messaggio</div>' : `
       <div class="msg-feed">
-        ${msgs.map(m=>`
-          <div class="msg-item">
-            <div class="msg-meta">
-              ${m.is_broadcast ? '📢 Messaggio di servizio' : '✉️ Messaggio personale'}
-              — ${fmt(m.created_at)}
+        ${msgs.map(m=>{
+          const isRead = m.read_by?.includes(currentUser.id);
+          return `
+          <div class="msg-item${isRead?'':' unread'}" id="msg-${m.id}">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">
+              <div class="msg-meta">
+                ${m.is_broadcast ? '📢 Messaggio di servizio' : '✉️ Messaggio personale'}
+                — ${fmt(m.created_at)}
+                ${isRead ? '<span style="color:var(--text-muted);font-size:10px;margin-left:6px">✓ Letto</span>' : '<span style="color:var(--gold);font-size:10px;margin-left:6px;font-weight:700">● Nuovo</span>'}
+              </div>
+              <div style="display:flex;gap:6px;flex-shrink:0">
+                ${!isRead ? `<button class="btn-sm btn-secondary" style="font-size:10px;padding:3px 8px" onclick="markMsgRead('${m.id}')">✓ Letto</button>` : ''}
+                <button class="btn-sm btn-danger" style="font-size:10px;padding:3px 8px" onclick="deleteUserMsg('${m.id}')">🗑</button>
+              </div>
             </div>
             ${m.testo?`<div class="msg-text">${m.testo}</div>`:''}
             ${m.file_data?`<div class="msg-file"><a href="${m.file_data}" download="${m.nome_file}">📎 ${m.nome_file}</a></div>`:''}
-          </div>`).join('')}
+          </div>`;
+        }).join('')}
       </div>`}
     </div>
   `;
   } catch(e) { content.innerHTML = `<div class="empty-state">Errore caricamento messaggi</div>`; }
+}
+
+async function markMsgRead(id) {
+  await apiFetch(`/messages/${id}/read`, { method:'PATCH' }).catch(()=>{});
+  renderUserMessages(document.getElementById('content'));
+}
+
+async function deleteUserMsg(id) {
+  try {
+    await apiFetch(`/messages/${id}/delete`, { method:'DELETE' });
+    renderUserMessages(document.getElementById('content'));
+  } catch(e) { showToast('Errore eliminazione', 'error'); }
 }
 
 // ===== SPESE AUTO =====

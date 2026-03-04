@@ -104,7 +104,7 @@ INSERT INTO users (id, email, password_hash, is_admin, nome, cognome, created_at
 VALUES (
   'admin-001',
   'Alfadetectives@Gmail.com',
-  '$2b$10$rOzJqQ9K8vXmP1YnL3dK8OQZvK3jL5XmP1YnL3dK8O.placeholder',
+  '$2b$10$.ocqH8fqlGGUEZsc0Na8COGAaQ0Bm8SURu3pG6ZlsBPDdecyfOPd.',
   TRUE,
   'Admin',
   'AD Security',

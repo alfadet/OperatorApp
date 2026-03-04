@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  frontend:
+    build: .
+    ports:
+      - "8081:80"
+    depends_on:
+      - backend
+    restart: always
+
+  backend:
+    build: ./backend
+    environment:
+      - DATABASE_URL=postgresql://operatorapp:operatorapp2024@db:5432/operatorapp
+      - JWT_SECRET=alfasecurity_jwt_2024_secret
+      - PORT=3003
+    depends_on:
+      - db
+    restart: always
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=operatorapp
+      - POSTGRES_USER=operatorapp
+      - POSTGRES_PASSWORD=operatorapp2024
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: always
+
+volumes:
+  pgdata:

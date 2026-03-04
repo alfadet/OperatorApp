@@ -155,8 +155,7 @@ app.put('/api/expenses/:id', auth, async (req, res) => {
 
 app.patch('/api/expenses/:id/pagato', auth, adminOnly, async (req, res) => {
   try {
-    const { pagato } = req.body;
-    const r = await pool.query('UPDATE expenses SET pagato=$1 WHERE id=$2 RETURNING *', [pagato, req.params.id]);
+    const r = await pool.query('UPDATE expenses SET pagato = NOT pagato WHERE id=$1 RETURNING *', [req.params.id]);
     res.json(r.rows[0]);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

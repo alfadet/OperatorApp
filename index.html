@@ -1192,6 +1192,55 @@ textarea.field-input { resize:vertical; min-height:100px; line-height:1.5; }
 </div>
 
 <script>
+// ===== AUDIO SYSTEM =====
+const _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playClick() {
+  try {
+    const osc = _audioCtx.createOscillator();
+    const gain = _audioCtx.createGain();
+    osc.connect(gain); gain.connect(_audioCtx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1200, _audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(800, _audioCtx.currentTime + 0.04);
+    gain.gain.setValueAtTime(0.18, _audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, _audioCtx.currentTime + 0.04);
+    osc.start(_audioCtx.currentTime);
+    osc.stop(_audioCtx.currentTime + 0.05);
+  } catch(e) {}
+}
+
+function playSwoosh() {
+  try {
+    const bufSize = _audioCtx.sampleRate * 0.35;
+    const buf = _audioCtx.createBuffer(1, bufSize, _audioCtx.sampleRate);
+    const data = buf.getChannelData(0);
+    for(let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1);
+    const src = _audioCtx.createBufferSource();
+    src.buffer = buf;
+    const filter = _audioCtx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(400, _audioCtx.currentTime);
+    filter.frequency.exponentialRampToValueAtTime(3000, _audioCtx.currentTime + 0.15);
+    filter.Q.value = 1.5;
+    const gain = _audioCtx.createGain();
+    gain.gain.setValueAtTime(0.001, _audioCtx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.3, _audioCtx.currentTime + 0.08);
+    gain.gain.exponentialRampToValueAtTime(0.001, _audioCtx.currentTime + 0.35);
+    src.connect(filter); filter.connect(gain); gain.connect(_audioCtx.destination);
+    src.start(_audioCtx.currentTime);
+    src.stop(_audioCtx.currentTime + 0.36);
+  } catch(e) {}
+}
+
+// Click su tutti i pulsanti
+document.addEventListener('click', function(e) {
+  if(e.target.closest('button, .btn, .btn-sm, .btn-primary, .btn-secondary, .nav-item, .doc-slot')) {
+    if(_audioCtx.state === 'suspended') _audioCtx.resume();
+    playClick();
+  }
+}, true);
+
 // ===== MOBILE MENU TOGGLE =====
 function toggleMobileMenu() {
   const sidebar = document.getElementById('sidebar');
@@ -1643,6 +1692,7 @@ async function sendHomeReply(msgId) {
   if (!text) { showToast('Scrivi una risposta', 'error'); return; }
   try {
     await apiFetch(`/incoming-messages/${msgId}/reply`, { method: 'PUT', body: JSON.stringify({ reply: text }) });
+    playSwoosh();
     showToast('Risposta inviata ✓');
     renderAdminHome(document.getElementById('content'));
   } catch(e) { showToast('Errore invio risposta', 'error'); }
@@ -2101,6 +2151,7 @@ async function sendBroadcast() {
     await apiFetch('/messages', { method:'POST', body: JSON.stringify({testo, is_broadcast: true, file_data, nome_file, mime_type}) });
     document.getElementById('broad-text').value='';
     fileEl.value='';
+    playSwoosh();
     showToast('Messaggio inviato a tutti gli operatori ✓');
     renderAdminComms(document.getElementById('content'));
   } catch(e) { showToast('Errore invio', 'error'); }
@@ -2123,6 +2174,7 @@ async function sendSingle() {
     await apiFetch('/messages', { method:'POST', body: JSON.stringify({testo, is_broadcast: false, target_user_id: uid, file_data, nome_file, mime_type}) });
     document.getElementById('single-text').value='';
     fileEl.value='';
+    playSwoosh();
     showToast('Messaggio inviato ✓');
     renderAdminComms(document.getElementById('content'));
   } catch(e) { showToast('Errore invio', 'error'); }
@@ -2353,6 +2405,10 @@ function renderUserProfile(content) {
           <div class="field-label">Data di Nascita</div>
           <input class="field-input" type="date" id="p-dn" value="${u.data_nascita||''}" disabled>
         </div>
+        <div class="field-group full">
+          <div class="field-label">IBAN</div>
+          <input class="field-input" id="p-iban" value="${u.iban||''}" placeholder="IT00 X000 0000 0000 0000000000" disabled>
+        </div>
       </div>
       <div class="btn-row">
         <button class="btn-sm btn-primary" id="btn-edit-profile" onclick="enableProfileEdit()">✏️ Modifica</button>
@@ -2360,11 +2416,33 @@ function renderUserProfile(content) {
         <button class="btn-sm btn-secondary" id="btn-cancel-profile" onclick="renderUserProfile(document.getElementById('content'))" style="display:none">Annulla</button>
       </div>
     </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">🪪 Matricola ASC</div>
+      <div id="matricola-error" class="error-banner"></div>
+      <div class="form-grid">
+        <div class="field-group full">
+          <div class="field-label">Nr. Matricola</div>
+          <input class="field-input" id="p-matricola" value="${u.nr_matricola||''}" placeholder="Es. ASC-2024-001">
+        </div>
+        <div class="field-group">
+          <div class="field-label">Data Rilasciata</div>
+          <input class="field-input" type="date" id="p-mat-rilasciata" value="${u.matricola_rilasciata ? u.matricola_rilasciata.substring(0,10) : ''}">
+        </div>
+        <div class="field-group">
+          <div class="field-label">Data Scadenza</div>
+          <input class="field-input" type="date" id="p-mat-scadenza" value="${u.matricola_scadenza ? u.matricola_scadenza.substring(0,10) : ''}">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn-sm btn-primary" onclick="saveMatricola()">${u.nr_matricola ? '🔄 Aggiorna' : '💾 Salva'} Matricola</button>
+      </div>
+    </div>
   `;
 }
 
 function enableProfileEdit() {
-  ['p-nome','p-cognome','p-tel','p-cf','p-ind','p-dn'].forEach(id=>{
+  ['p-nome','p-cognome','p-tel','p-cf','p-ind','p-dn','p-iban'].forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.disabled = false;
   });
@@ -2380,10 +2458,11 @@ async function saveProfile() {
   const codice_fiscale = document.getElementById('p-cf').value;
   const indirizzo = document.getElementById('p-ind').value;
   const data_nascita = document.getElementById('p-dn').value;
+  const iban = document.getElementById('p-iban').value;
   try {
     const updated = await apiFetch(`/users/${currentUser.id}`, {
       method:'PUT',
-      body: JSON.stringify({nome, cognome, email: currentUser.email, telefono, indirizzo, data_nascita, codice_fiscale})
+      body: JSON.stringify({nome, cognome, email: currentUser.email, telefono, indirizzo, data_nascita, codice_fiscale, iban})
     });
     currentUser = {...currentUser, ...updated};
     showToast('Profilo aggiornato ✓');
@@ -2392,6 +2471,26 @@ async function saveProfile() {
     showUserPage('profile', null);
     document.querySelectorAll('.nav-item')[1]?.classList.add('active');
   } catch(e) { showToast('Errore aggiornamento', 'error'); }
+}
+
+async function saveMatricola() {
+  const nr_matricola = document.getElementById('p-matricola').value.trim();
+  const matricola_rilasciata = document.getElementById('p-mat-rilasciata').value;
+  const matricola_scadenza = document.getElementById('p-mat-scadenza').value;
+  const errEl = document.getElementById('matricola-error');
+  if(errEl) errEl.textContent = '';
+  try {
+    const updated = await apiFetch(`/users/${currentUser.id}/matricola`, {
+      method:'PUT',
+      body: JSON.stringify({nr_matricola, matricola_rilasciata, matricola_scadenza})
+    });
+    currentUser = {...currentUser, ...updated};
+    showToast('Matricola salvata ✓');
+    renderUserProfile(document.getElementById('content'));
+  } catch(e) {
+    if(errEl) errEl.textContent = 'Errore salvataggio matricola';
+    showToast('Errore salvataggio matricola', 'error');
+  }
 }
 
 // ===== DOCUMENTS =====
@@ -4040,6 +4139,7 @@ async function sendReplyToOperator(msgId) {
   if (!text) { showToast('Scrivi una risposta', 'error'); return; }
   try {
     await apiFetch(`/incoming-messages/${msgId}/reply`, { method: 'PUT', body: JSON.stringify({ reply: text }) });
+    playSwoosh();
     await renderAdminComms(document.getElementById('content'));
     showToast('Risposta inviata ✓');
   } catch(e) { showToast('Errore invio risposta', 'error'); }
@@ -4050,6 +4150,7 @@ async function confirmReply(msgId) {
   if (!text) { showToast('Scrivi una risposta', 'error'); return; }
   try {
     await apiFetch(`/incoming-messages/${msgId}/reply`, { method: 'PUT', body: JSON.stringify({ reply: text }) });
+    playSwoosh();
     closeModalDirect();
     await renderAdminComms(document.getElementById('content'));
     showToast('Risposta inviata ✓');
@@ -4063,6 +4164,7 @@ async function sendMessageToAdmin() {
   try {
     await apiFetch('/incoming-messages', { method: 'POST', body: JSON.stringify({ testo: text }) });
     document.getElementById('user-to-admin-text').value = '';
+    playSwoosh();
     showToast("Messaggio inviato all'amministratore ✓");
     await renderUserDashboard(document.getElementById('content'));
   } catch(e) { showToast('Errore invio messaggio', 'error'); }

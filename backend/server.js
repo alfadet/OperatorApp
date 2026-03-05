@@ -62,9 +62,11 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 // ── USERS ─────────────────────────────────────────────────────────────────────
+const USER_COLS = 'id,email,is_admin,nome,cognome,telefono,indirizzo,data_nascita,codice_fiscale,nr_matricola,matricola_rilasciata,matricola_scadenza,iban,created_at';
+
 app.get('/api/users', auth, adminOnly, async (req, res) => {
   try {
-    const r = await pool.query('SELECT id,email,is_admin,nome,cognome,telefono,indirizzo,data_nascita,codice_fiscale,created_at FROM users WHERE is_admin=FALSE ORDER BY created_at');
+    const r = await pool.query(`SELECT ${USER_COLS} FROM users WHERE is_admin=FALSE ORDER BY created_at`);
     res.json(r.rows);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -73,10 +75,7 @@ app.get('/api/users/:id', auth, async (req, res) => {
   try {
     if (!req.user.is_admin && req.user.id !== req.params.id)
       return res.status(403).json({ error: 'Accesso negato' });
-    const r = await pool.query(
-      'SELECT id,email,is_admin,nome,cognome,telefono,indirizzo,data_nascita,codice_fiscale,created_at FROM users WHERE id=$1',
-      [req.params.id]
-    );
+    const r = await pool.query(`SELECT ${USER_COLS} FROM users WHERE id=$1`, [req.params.id]);
     if (!r.rows.length) return res.status(404).json({ error: 'Utente non trovato' });
     res.json(r.rows[0]);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -86,17 +85,30 @@ app.put('/api/users/:id', auth, async (req, res) => {
   try {
     if (!req.user.is_admin && req.user.id !== req.params.id)
       return res.status(403).json({ error: 'Accesso negato' });
-    const { nome, cognome, email, telefono, indirizzo, data_nascita, codice_fiscale, password } = req.body;
+    const { nome, cognome, email, telefono, indirizzo, data_nascita, codice_fiscale, iban, password } = req.body;
     let q, params;
     if (password) {
       const hash = await bcrypt.hash(password, 10);
-      q = 'UPDATE users SET nome=$1,cognome=$2,email=$3,telefono=$4,indirizzo=$5,data_nascita=$6,codice_fiscale=$7,password_hash=$8 WHERE id=$9 RETURNING id,email,is_admin,nome,cognome,telefono,indirizzo,data_nascita,codice_fiscale,created_at';
-      params = [nome, cognome, email, telefono, indirizzo, data_nascita || null, codice_fiscale, hash, req.params.id];
+      q = `UPDATE users SET nome=$1,cognome=$2,email=$3,telefono=$4,indirizzo=$5,data_nascita=$6,codice_fiscale=$7,iban=$8,password_hash=$9 WHERE id=$10 RETURNING ${USER_COLS}`;
+      params = [nome, cognome, email, telefono, indirizzo, data_nascita || null, codice_fiscale, iban || null, hash, req.params.id];
     } else {
-      q = 'UPDATE users SET nome=$1,cognome=$2,email=$3,telefono=$4,indirizzo=$5,data_nascita=$6,codice_fiscale=$7 WHERE id=$8 RETURNING id,email,is_admin,nome,cognome,telefono,indirizzo,data_nascita,codice_fiscale,created_at';
-      params = [nome, cognome, email, telefono, indirizzo, data_nascita || null, codice_fiscale, req.params.id];
+      q = `UPDATE users SET nome=$1,cognome=$2,email=$3,telefono=$4,indirizzo=$5,data_nascita=$6,codice_fiscale=$7,iban=$8 WHERE id=$9 RETURNING ${USER_COLS}`;
+      params = [nome, cognome, email, telefono, indirizzo, data_nascita || null, codice_fiscale, iban || null, req.params.id];
     }
     const r = await pool.query(q, params);
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/users/:id/matricola', auth, async (req, res) => {
+  try {
+    if (!req.user.is_admin && req.user.id !== req.params.id)
+      return res.status(403).json({ error: 'Accesso negato' });
+    const { nr_matricola, matricola_rilasciata, matricola_scadenza } = req.body;
+    const r = await pool.query(
+      `UPDATE users SET nr_matricola=$1,matricola_rilasciata=$2,matricola_scadenza=$3 WHERE id=$4 RETURNING ${USER_COLS}`,
+      [nr_matricola || null, matricola_rilasciata || null, matricola_scadenza || null, req.params.id]
+    );
     res.json(r.rows[0]);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

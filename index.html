@@ -2917,68 +2917,67 @@ async function adminPrintUser(id) {
     const now = new Date().toLocaleDateString('it-IT', { day:'2-digit', month:'long', year:'numeric' });
     const nomeCognome = `${u.nome||''} ${u.cognome||''}`.trim() || u.email;
 
-    // ── Sfondo ──
-    doc.setFillColor(13, 11, 2);
+    // Sfondo bianco
+    doc.setFillColor(255, 255, 255);
     doc.rect(0, 0, W, H, 'F');
 
-    // ── Header band ──
-    doc.setFillColor(15, 12, 0);
-    doc.rect(0, 0, W, 42, 'F');
-    doc.setDrawColor(201, 162, 39);
-    doc.setLineWidth(0.8);
-    doc.line(0, 42, W, 42);
+    // Header band grigio chiaro
+    doc.setFillColor(245, 245, 245);
+    doc.rect(0, 0, W, 40, 'F');
+    doc.setDrawColor(180, 180, 180);
+    doc.setLineWidth(0.5);
+    doc.line(0, 40, W, 40);
 
     // Monogramma AD
-    doc.setFillColor(201, 162, 39);
-    doc.roundedRect(12, 7, 28, 28, 3, 3, 'F');
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(14); doc.setFont('helvetica', 'bold');
-    doc.text('AD', 26, 24, { align: 'center' });
+    doc.setFillColor(40, 40, 40);
+    doc.roundedRect(12, 7, 26, 26, 2, 2, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(13); doc.setFont('helvetica', 'bold');
+    doc.text('AD', 25, 23, { align: 'center' });
 
     // Titolo header
-    doc.setTextColor(201, 162, 39);
-    doc.setFontSize(16); doc.setFont('helvetica', 'bold');
-    doc.text('ALFA SECURITY', 48, 18);
+    doc.setTextColor(30, 30, 30);
+    doc.setFontSize(15); doc.setFont('helvetica', 'bold');
+    doc.text('ALFA SECURITY', 46, 17);
+    doc.setFontSize(8.5); doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text('Sistema Professionale Gestione Operatori', 46, 24);
+    doc.text(`Documento generato il ${now}`, 46, 31);
+
+    // Titolo scheda
+    doc.setFillColor(40, 40, 40);
+    doc.rect(0, 42, W, 16, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(13); doc.setFont('helvetica', 'bold');
+    doc.text('SCHEDA OPERATORE', W/2, 52, { align: 'center' });
     doc.setFontSize(9); doc.setFont('helvetica', 'normal');
-    doc.setTextColor(180, 155, 90);
-    doc.text('Sistema Professionale Gestione Operatori', 48, 25);
-    doc.setTextColor(120, 110, 80);
-    doc.text(`Documento generato il ${now}`, 48, 32);
+    doc.setTextColor(210, 210, 210);
+    doc.text(nomeCognome.toUpperCase(), W/2, 57, { align: 'center' });
 
-    // ── Titolo scheda ──
-    doc.setFillColor(20, 16, 3);
-    doc.rect(0, 44, W, 18, 'F');
-    doc.setTextColor(201, 162, 39);
-    doc.setFontSize(14); doc.setFont('helvetica', 'bold');
-    doc.text('SCHEDA OPERATORE', W/2, 55, { align: 'center' });
-    doc.setFontSize(10); doc.setFont('helvetica', 'normal');
-    doc.setTextColor(220, 200, 130);
-    doc.text(nomeCognome.toUpperCase(), W/2, 60, { align: 'center' });
-
-    // ── Sezione dati personali ──
-    let y = 72;
+    // Dati
+    let y = 68;
     const addSection = (title) => {
-      doc.setFillColor(25, 20, 5);
+      if(y > 265) { doc.addPage(); doc.setFillColor(255,255,255); doc.rect(0,0,W,H,'F'); y = 15; }
+      doc.setFillColor(230, 230, 230);
       doc.rect(10, y, W-20, 7, 'F');
-      doc.setDrawColor(201, 162, 39); doc.setLineWidth(0.4);
+      doc.setDrawColor(150, 150, 150); doc.setLineWidth(0.3);
       doc.line(10, y+7, W-10, y+7);
-      doc.setTextColor(201, 162, 39); doc.setFontSize(8); doc.setFont('helvetica', 'bold');
+      doc.setTextColor(40, 40, 40); doc.setFontSize(8); doc.setFont('helvetica', 'bold');
       doc.text(title.toUpperCase(), 14, y+5);
       y += 10;
     };
-    const addRow = (label, value, highlight) => {
-      if(y > 265) { doc.addPage(); doc.setFillColor(13,11,2); doc.rect(0,0,W,H,'F'); y = 15; }
-      doc.setTextColor(120, 110, 80); doc.setFontSize(7.5); doc.setFont('helvetica', 'normal');
+    const addRow = (label, value, bold) => {
+      if(y > 270) { doc.addPage(); doc.setFillColor(255,255,255); doc.rect(0,0,W,H,'F'); y = 15; }
+      doc.setTextColor(110, 110, 110); doc.setFontSize(8); doc.setFont('helvetica', 'normal');
       doc.text(label + ':', 14, y);
-      doc.setTextColor(highlight ? 201 : 220, highlight ? 162 : 210, highlight ? 39 : 180);
-      doc.setFont('helvetica', highlight ? 'bold' : 'normal');
+      doc.setTextColor(30, 30, 30); doc.setFont('helvetica', bold ? 'bold' : 'normal');
       doc.text(value || '—', 65, y);
-      doc.setDrawColor(40, 35, 10); doc.setLineWidth(0.2);
+      doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.2);
       doc.line(10, y+2, W-10, y+2);
       y += 7;
     };
 
-    addSection('📋 Dati Anagrafici');
+    addSection('Dati Anagrafici');
     addRow('Nome', u.nome); addRow('Cognome', u.cognome);
     addRow('Email', u.email); addRow('Telefono', u.telefono);
     addRow('Indirizzo', u.indirizzo);
@@ -2987,38 +2986,37 @@ async function adminPrintUser(id) {
     addRow('IBAN', u.iban);
     y += 3;
 
-    addSection('🪪 Matricola ASC');
+    addSection('Matricola ASC');
     addRow('Nr. Matricola', u.nr_matricola, true);
     addRow('Data Rilasciata', u.matricola_rilasciata ? u.matricola_rilasciata.substring(0,10) : null);
-    addRow('Data Scadenza', u.matricola_scadenza ? u.matricola_scadenza.substring(0,10) : null,
-      u.matricola_scadenza && new Date(u.matricola_scadenza) < new Date());
+    addRow('Data Scadenza', u.matricola_scadenza ? u.matricola_scadenza.substring(0,10) : null, true);
     y += 3;
 
-    addSection('🔏 Privacy');
-    addRow('Disclaimer Accettato', u.disclaimer_accepted ? `Sì — ${u.disclaimer_accepted_at ? new Date(u.disclaimer_accepted_at).toLocaleDateString('it-IT') : ''}` : 'No');
+    addSection('Privacy');
+    addRow('Disclaimer Accettato', u.disclaimer_accepted ? `Si — ${u.disclaimer_accepted_at ? new Date(u.disclaimer_accepted_at).toLocaleDateString('it-IT') : ''}` : 'No');
     addRow('Registrato il', new Date(u.created_at).toLocaleDateString('it-IT'));
     y += 5;
 
-    // ── Documenti / Foto ──
+    // Documenti / Foto
     const docLabels = {
-      foto_selfie:'Foto Selfie', carta_identita:"Carta d'Identità",
+      foto_selfie:'Foto Selfie', carta_identita:"Carta d'Identita",
       codice_fiscale_doc:'Codice Fiscale', permesso_soggiorno:'Permesso Soggiorno',
       attestato_vvff:'Attestato VVFF', attestato_asc:'Attestato ASC',
       istanza_questura:'Istanza Questura', tesserino_asc:'Tesserino ASC'
     };
     const imgDocs = Object.entries(docLabels).filter(([k]) => docs[k] && docs[k].mime_type && docs[k].mime_type.startsWith('image/'));
     if(imgDocs.length > 0) {
-      addSection('📁 Documenti Allegati');
-      const imgW = 85, imgH = 60, marginX = 10, gap = 10;
+      addSection('Documenti Allegati');
+      const imgW = 85, imgH = 62, gap = 10;
       let col = 0;
       for(const [k, label] of imgDocs) {
         const d = docs[k];
-        if(y + imgH + 16 > 275) { doc.addPage(); doc.setFillColor(13,11,2); doc.rect(0,0,W,H,'F'); y = 15; col = 0; }
-        const x = marginX + col * (imgW + gap);
-        doc.setDrawColor(201, 162, 39); doc.setLineWidth(0.4);
+        if(y + imgH + 16 > 275) { doc.addPage(); doc.setFillColor(255,255,255); doc.rect(0,0,W,H,'F'); y = 15; col = 0; }
+        const x = 10 + col * (imgW + gap);
+        doc.setDrawColor(180, 180, 180); doc.setLineWidth(0.4);
         doc.rect(x, y, imgW, imgH);
         try { doc.addImage(d.data, d.mime_type.includes('png') ? 'PNG' : 'JPEG', x+1, y+1, imgW-2, imgH-2, undefined, 'FAST'); } catch(e) {}
-        doc.setTextColor(150, 130, 60); doc.setFontSize(7); doc.setFont('helvetica', 'normal');
+        doc.setTextColor(80, 80, 80); doc.setFontSize(7); doc.setFont('helvetica', 'normal');
         doc.text(label, x + imgW/2, y + imgH + 5, { align: 'center' });
         col++;
         if(col >= 2) { col = 0; y += imgH + 14; }
@@ -3026,19 +3024,18 @@ async function adminPrintUser(id) {
       if(col > 0) y += imgH + 14;
     }
 
-    // ── Footer ──
+    // Footer
     const pages = doc.internal.getNumberOfPages();
     for(let i = 1; i <= pages; i++) {
       doc.setPage(i);
-      doc.setDrawColor(201, 162, 39); doc.setLineWidth(0.4);
+      doc.setDrawColor(180, 180, 180); doc.setLineWidth(0.3);
       doc.line(10, H-14, W-10, H-14);
-      doc.setTextColor(100, 90, 50); doc.setFontSize(7); doc.setFont('helvetica', 'normal');
+      doc.setTextColor(140, 140, 140); doc.setFontSize(7); doc.setFont('helvetica', 'normal');
       doc.text('Alfa Security — Documento riservato ad uso interno', 14, H-9);
       doc.text(`Pag. ${i} / ${pages}`, W-14, H-9, { align: 'right' });
     }
 
-    const filename = `Scheda operatore ${nomeCognome}.pdf`;
-    doc.save(filename);
+    doc.save(`Scheda operatore ${nomeCognome}.pdf`);
     showToast('PDF scaricato ✓');
   } catch(e) { showToast('Errore generazione PDF', 'error'); console.error(e); }
 }

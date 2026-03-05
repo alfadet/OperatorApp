@@ -313,15 +313,19 @@ html,body { height:100%; font-family:'Exo 2',sans-serif; background:var(--bg); c
   cursor:pointer; transition:all 0.2s;
 }
 .btn-utility:hover { background:rgba(46,204,113,0.12); }
-/* Barre grafiche DB stats */
-.db-bar-wrap { margin-bottom:12px; }
-.db-bar-label { display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); margin-bottom:4px; }
-.db-bar-track { background:var(--bg3); border-radius:4px; height:10px; overflow:hidden; }
-.db-bar-fill { height:100%; border-radius:4px; transition:width 0.6s ease; background:linear-gradient(90deg,var(--gold-dark),var(--gold)); }
-.db-bar-fill.alt { background:linear-gradient(90deg,#1a6688,#3498db); }
-.db-total-box { background:var(--bg3); border:1px solid var(--border-gold); border-radius:8px; padding:14px 18px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; }
-.db-total-label { font-size:11px; color:var(--text-muted); letter-spacing:2px; text-transform:uppercase; }
-.db-total-val { font-family:'Cinzel',serif; font-size:1.4rem; color:var(--gold); font-weight:700; }
+/* Utility Modal — DB Stats */
+.modal-wide { max-width:780px !important; }
+.db-total-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-bottom:24px; }
+.db-stat-card { background:var(--bg3); border:1px solid var(--border-gold); border-radius:10px; padding:18px 20px; text-align:center; }
+.db-stat-card .val { font-family:'Cinzel',serif; font-size:1.8rem; color:var(--gold); font-weight:700; line-height:1; }
+.db-stat-card .lbl { font-size:11px; color:var(--text-muted); letter-spacing:2px; text-transform:uppercase; margin-top:6px; }
+.db-table-row { background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:14px 18px; margin-bottom:10px; }
+.db-table-row-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px; }
+.db-table-name { font-size:14px; font-weight:700; color:var(--text); letter-spacing:1px; }
+.db-table-meta { font-size:12px; color:var(--text-muted); }
+.db-table-mb { font-family:'Cinzel',serif; font-size:1.1rem; font-weight:700; }
+.db-bar-track { background:var(--bg4); border-radius:6px; height:16px; overflow:hidden; }
+.db-bar-fill { height:100%; border-radius:6px; transition:width 0.8s cubic-bezier(.22,1,.36,1); }
 
 .main-body { display:flex; flex:1; overflow:hidden; }
 
@@ -2610,48 +2614,77 @@ async function saveProfile() {
 async function openUtilityModal() {
   openModal(`
     <div class="modal-title">
-      <span>⚙ Utility — Sistema</span>
+      <span>⚙ Utility — Database</span>
       <span class="modal-close" onclick="closeModalDirect()">✕</span>
     </div>
-    <div id="utility-body" style="min-height:120px;display:flex;align-items:center;justify-content:center">
-      <span style="color:var(--text-muted);font-size:13px">Caricamento statistiche...</span>
+    <div id="utility-body" style="min-height:160px;display:flex;align-items:center;justify-content:center">
+      <span style="color:var(--text-muted);font-size:14px">⏳ Caricamento statistiche...</span>
     </div>
   `);
+  // Allarga la modal
+  document.getElementById('modal-content').classList.add('modal-wide');
   try {
     const stats = await apiFetch('/admin/db-stats');
-    const totalMB = (stats.total.total_bytes / 1048576).toFixed(2);
-    const maxBytes = stats.tables[0]?.size_bytes || 1;
-    const colors = ['var(--gold)','#3498db','#2ecc71','#e67e22','#9b59b6','#e74c3c','#1abc9c','#f39c12'];
+    const totalBytes = stats.total.total_bytes;
+    const totalMB = (totalBytes / 1048576).toFixed(2);
+    const totalKB = (totalBytes / 1024).toFixed(0);
+    const totalRows = stats.tables.reduce((s,t) => s + Number(t.rows), 0);
+    const maxBytes = Math.max(...stats.tables.map(t => Number(t.size_bytes)), 1);
+    const colors = ['#c9a227','#3498db','#2ecc71','#e67e22','#9b59b6','#e74c3c','#1abc9c','#f39c12','#16a085','#d35400'];
+
     document.getElementById('utility-body').innerHTML = `
-      <div class="db-total-box">
-        <div>
-          <div class="db-total-label">Database Totale</div>
-          <div class="db-total-val">${totalMB} MB</div>
+      <div class="db-total-grid">
+        <div class="db-stat-card">
+          <div class="val">${totalMB}</div>
+          <div class="lbl">🗄️ MB Totali</div>
         </div>
-        <div style="font-size:2.5rem">🗄️</div>
+        <div class="db-stat-card">
+          <div class="val">${stats.tables.length}</div>
+          <div class="lbl">📋 Tabelle</div>
+        </div>
+        <div class="db-stat-card">
+          <div class="val">${totalRows.toLocaleString()}</div>
+          <div class="lbl">📝 Righe Totali</div>
+        </div>
       </div>
-      <div style="font-size:11px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:12px">Tabelle</div>
-      ${stats.tables.map((t,i) => {
-        const mb = (t.size_bytes / 1048576).toFixed(3);
-        const pct = Math.max(2, Math.round((t.size_bytes / maxBytes) * 100));
+
+      <div style="font-size:11px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border-gold)">
+        📊 Utilizzo per Tabella
+      </div>
+
+      ${stats.tables.map((t, i) => {
+        const mb = (Number(t.size_bytes) / 1048576).toFixed(3);
+        const kb = (Number(t.size_bytes) / 1024).toFixed(1);
+        const pct = Math.max(3, Math.round((Number(t.size_bytes) / maxBytes) * 100));
         const col = colors[i % colors.length];
-        return `<div class="db-bar-wrap">
-          <div class="db-bar-label">
-            <span style="color:var(--text)">${t.tablename}</span>
-            <span>${mb} MB &nbsp;·&nbsp; ${Number(t.rows).toLocaleString()} righe</span>
+        const rows = Number(t.rows).toLocaleString();
+        const pctOfTotal = totalBytes > 0 ? ((Number(t.size_bytes) / totalBytes) * 100).toFixed(1) : 0;
+        return `
+        <div class="db-table-row">
+          <div class="db-table-row-top">
+            <span class="db-table-name" style="color:${col}">● ${t.tablename}</span>
+            <div style="display:flex;gap:20px;align-items:baseline">
+              <span class="db-table-mb" style="color:${col}">${mb} MB</span>
+              <span class="db-table-meta">${rows} righe</span>
+              <span class="db-table-meta" style="min-width:36px;text-align:right">${pctOfTotal}%</span>
+            </div>
           </div>
           <div class="db-bar-track">
-            <div class="db-bar-fill" style="width:${pct}%;background:linear-gradient(90deg,${col}99,${col})"></div>
+            <div class="db-bar-fill" style="width:${pct}%;background:linear-gradient(90deg,${col}60,${col})"></div>
           </div>
         </div>`;
       }).join('')}
-      <div class="btn-row" style="margin-top:24px;justify-content:center">
+
+      <div style="text-align:center;color:var(--text-muted);font-size:11px;margin:16px 0 4px">
+        Spazio totale occupato: <strong style="color:var(--text)">${totalKB} KB</strong> = <strong style="color:var(--gold)">${totalMB} MB</strong>
+      </div>
+      <div class="btn-row" style="margin-top:20px;justify-content:center">
         <button class="btn-sm btn-primary" onclick="downloadDbBackup()">💾 Salva Backup Database</button>
         <button class="btn-sm btn-secondary" onclick="closeModalDirect()">Chiudi</button>
       </div>
     `;
   } catch(e) {
-    document.getElementById('utility-body').innerHTML = '<div style="color:#e74c3c">Errore caricamento statistiche</div>';
+    document.getElementById('utility-body').innerHTML = '<div style="color:#e74c3c;text-align:center;padding:20px">Errore caricamento statistiche</div>';
   }
 }
 

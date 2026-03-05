@@ -85,15 +85,15 @@ app.put('/api/users/:id', auth, async (req, res) => {
   try {
     if (!req.user.is_admin && req.user.id !== req.params.id)
       return res.status(403).json({ error: 'Accesso negato' });
-    const { nome, cognome, email, telefono, indirizzo, data_nascita, codice_fiscale, iban, password } = req.body;
+    const { nome, cognome, email, telefono, indirizzo, data_nascita, codice_fiscale, iban, nr_matricola, matricola_rilasciata, matricola_scadenza, password } = req.body;
     let q, params;
     if (password) {
       const hash = await bcrypt.hash(password, 10);
-      q = `UPDATE users SET nome=$1,cognome=$2,email=$3,telefono=$4,indirizzo=$5,data_nascita=$6,codice_fiscale=$7,iban=$8,password_hash=$9 WHERE id=$10 RETURNING ${USER_COLS}`;
-      params = [nome, cognome, email, telefono, indirizzo, data_nascita || null, codice_fiscale, iban || null, hash, req.params.id];
+      q = `UPDATE users SET nome=$1,cognome=$2,email=$3,telefono=$4,indirizzo=$5,data_nascita=$6,codice_fiscale=$7,iban=$8,nr_matricola=$9,matricola_rilasciata=$10,matricola_scadenza=$11,password_hash=$12 WHERE id=$13 RETURNING ${USER_COLS}`;
+      params = [nome, cognome, email, telefono, indirizzo, data_nascita||null, codice_fiscale, iban||null, nr_matricola||null, matricola_rilasciata||null, matricola_scadenza||null, hash, req.params.id];
     } else {
-      q = `UPDATE users SET nome=$1,cognome=$2,email=$3,telefono=$4,indirizzo=$5,data_nascita=$6,codice_fiscale=$7,iban=$8 WHERE id=$9 RETURNING ${USER_COLS}`;
-      params = [nome, cognome, email, telefono, indirizzo, data_nascita || null, codice_fiscale, iban || null, req.params.id];
+      q = `UPDATE users SET nome=$1,cognome=$2,email=$3,telefono=$4,indirizzo=$5,data_nascita=$6,codice_fiscale=$7,iban=$8,nr_matricola=$9,matricola_rilasciata=$10,matricola_scadenza=$11 WHERE id=$12 RETURNING ${USER_COLS}`;
+      params = [nome, cognome, email, telefono, indirizzo, data_nascita||null, codice_fiscale, iban||null, nr_matricola||null, matricola_rilasciata||null, matricola_scadenza||null, req.params.id];
     }
     const r = await pool.query(q, params);
     res.json(r.rows[0]);

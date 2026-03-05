@@ -1553,8 +1553,12 @@ async function adminViewUser(id) {
       <div class="profile-field"><div class="profile-field-label">Email</div><div class="profile-field-val">${u.email}</div></div>
       <div class="profile-field"><div class="profile-field-label">Telefono</div><div class="profile-field-val">${u.telefono||'—'}</div></div>
       <div class="profile-field"><div class="profile-field-label">Indirizzo</div><div class="profile-field-val">${u.indirizzo||'—'}</div></div>
-      <div class="profile-field"><div class="profile-field-label">Data Nascita</div><div class="profile-field-val">${u.data_nascita||'—'}</div></div>
+      <div class="profile-field"><div class="profile-field-label">Data Nascita</div><div class="profile-field-val">${u.data_nascita ? u.data_nascita.substring(0,10) : '—'}</div></div>
       <div class="profile-field"><div class="profile-field-label">Codice Fiscale</div><div class="profile-field-val">${u.codice_fiscale||'—'}</div></div>
+      <div class="profile-field"><div class="profile-field-label">IBAN</div><div class="profile-field-val">${u.iban||'—'}</div></div>
+      <div class="profile-field"><div class="profile-field-label">Nr. Matricola</div><div class="profile-field-val">${u.nr_matricola||'—'}</div></div>
+      <div class="profile-field"><div class="profile-field-label">Matricola Rilasciata</div><div class="profile-field-val">${u.matricola_rilasciata ? u.matricola_rilasciata.substring(0,10) : '—'}</div></div>
+      <div class="profile-field"><div class="profile-field-label">Matricola Scadenza</div><div class="profile-field-val" style="${u.matricola_scadenza && new Date(u.matricola_scadenza) < new Date() ? 'color:#e74c3c;font-weight:700' : ''}">${u.matricola_scadenza ? u.matricola_scadenza.substring(0,10) : '—'}${u.matricola_scadenza && new Date(u.matricola_scadenza) < new Date() ? ' ⚠️ SCADUTA' : ''}</div></div>
       <div class="profile-field"><div class="profile-field-label">Registrato</div><div class="profile-field-val">${fmtDate(u.created_at)}</div></div>
     </div>
 
@@ -1618,6 +1622,15 @@ async function adminEditUser(id) {
       <div class="field-group"><div class="field-label">Codice Fiscale</div><input class="field-input" id="edit-cf" value="${u.codice_fiscale||''}"></div>
       <div class="field-group full"><div class="field-label">Indirizzo</div><input class="field-input" id="edit-ind" value="${u.indirizzo||''}"></div>
       <div class="field-group"><div class="field-label">Data Nascita</div><input class="field-input" type="date" id="edit-dn" value="${u.data_nascita ? u.data_nascita.substring(0,10) : ''}"></div>
+      <div class="field-group full"><div class="field-label">IBAN</div><input class="field-input" id="edit-iban" value="${u.iban||''}" placeholder="IT00 X000 0000 0000 0000000000"></div>
+    </div>
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+      <div style="font-size:11px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:10px">🪪 Matricola ASC</div>
+      <div class="form-grid">
+        <div class="field-group full"><div class="field-label">Nr. Matricola</div><input class="field-input" id="edit-matricola" value="${u.nr_matricola||''}" placeholder="Es. ASC-2024-001"></div>
+        <div class="field-group"><div class="field-label">Data Rilasciata</div><input class="field-input" type="date" id="edit-mat-rilasciata" value="${u.matricola_rilasciata ? u.matricola_rilasciata.substring(0,10) : ''}"></div>
+        <div class="field-group"><div class="field-label">Data Scadenza</div><input class="field-input" type="date" id="edit-mat-scadenza" value="${u.matricola_scadenza ? u.matricola_scadenza.substring(0,10) : ''}"></div>
+      </div>
     </div>
     <div class="btn-row" style="margin-top:20px">
       <button class="btn-sm btn-primary" onclick="adminSaveUser('${id}')">💾 Salva</button>
@@ -1635,8 +1648,12 @@ async function adminSaveUser(id) {
   const codice_fiscale = document.getElementById('edit-cf').value;
   const indirizzo = document.getElementById('edit-ind').value;
   const data_nascita = document.getElementById('edit-dn').value;
+  const iban = document.getElementById('edit-iban').value;
+  const nr_matricola = document.getElementById('edit-matricola').value;
+  const matricola_rilasciata = document.getElementById('edit-mat-rilasciata').value;
+  const matricola_scadenza = document.getElementById('edit-mat-scadenza').value;
   try {
-    await apiFetch(`/users/${id}`, { method:'PUT', body: JSON.stringify({nome, cognome, email, telefono, indirizzo, data_nascita, codice_fiscale}) });
+    await apiFetch(`/users/${id}`, { method:'PUT', body: JSON.stringify({nome, cognome, email, telefono, indirizzo, data_nascita, codice_fiscale, iban, nr_matricola, matricola_rilasciata, matricola_scadenza}) });
     closeModalDirect();
     showToast('Dati operatore aggiornati ✓');
     renderAdminUsers(document.getElementById('content'),'');

@@ -305,6 +305,23 @@ html,body { height:100%; font-family:'Exo 2',sans-serif; background:var(--bg); c
   cursor:pointer; transition:all 0.2s; text-transform:uppercase;
 }
 .btn-logout:hover { background:rgba(201,162,39,0.1); }
+.btn-utility {
+  padding:7px 16px; background:transparent;
+  border:1px solid #27ae60; color:#2ecc71;
+  border-radius:var(--radius); font-family:'Exo 2',sans-serif;
+  font-size:11px; letter-spacing:1px; font-weight:700;
+  cursor:pointer; transition:all 0.2s;
+}
+.btn-utility:hover { background:rgba(46,204,113,0.12); }
+/* Barre grafiche DB stats */
+.db-bar-wrap { margin-bottom:12px; }
+.db-bar-label { display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); margin-bottom:4px; }
+.db-bar-track { background:var(--bg3); border-radius:4px; height:10px; overflow:hidden; }
+.db-bar-fill { height:100%; border-radius:4px; transition:width 0.6s ease; background:linear-gradient(90deg,var(--gold-dark),var(--gold)); }
+.db-bar-fill.alt { background:linear-gradient(90deg,#1a6688,#3498db); }
+.db-total-box { background:var(--bg3); border:1px solid var(--border-gold); border-radius:8px; padding:14px 18px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; }
+.db-total-label { font-size:11px; color:var(--text-muted); letter-spacing:2px; text-transform:uppercase; }
+.db-total-val { font-family:'Cinzel',serif; font-size:1.4rem; color:var(--gold); font-weight:700; }
 
 .main-body { display:flex; flex:1; overflow:hidden; }
 
@@ -1474,6 +1491,8 @@ function doLogout() {
   document.getElementById('login-password').value='';
   document.getElementById('topbar-search-wrap').style.display = 'none';
   document.getElementById('topbar-search-input').value = '';
+  const ub = document.getElementById('btn-utility');
+  if(ub) ub.remove();
   showLogin();
 }
 
@@ -1535,6 +1554,15 @@ function buildAdminUI() {
     </div>
   `;
   document.getElementById('topbar-search-wrap').style.display = 'flex';
+  // Inietta pulsante Utility verde in topbar
+  if(!document.getElementById('btn-utility')) {
+    const tr = document.querySelector('.topbar-right');
+    const btn = document.createElement('button');
+    btn.id = 'btn-utility'; btn.className = 'btn-utility';
+    btn.innerHTML = '⚙ Utility';
+    btn.onclick = openUtilityModal;
+    tr.insertBefore(btn, tr.firstChild);
+  }
   showAdminPage('home', document.getElementById('nav-home'));
   syncThemeToggle();
 }
@@ -1933,6 +1961,11 @@ async function renderAdminHome(content) {
           <button class="btn-primary" style="font-size:1.1rem;padding:18px 32px;flex:1;max-width:240px" onclick="showAdminPage('reportmese',document.getElementById('nav-reportmese'))">
             📊 Report Mese
           </button>
+          <a href="https://t.me/Alfadetectives_bot" target="_blank" rel="noopener"
+            style="display:flex;align-items:center;justify-content:center;gap:10px;font-size:1.1rem;padding:18px 32px;flex:1;max-width:240px;background:linear-gradient(135deg,#1a5276,#2980b9);color:#fff;border:1px solid #3498db;border-radius:var(--radius);text-decoration:none;font-weight:700;transition:all 0.2s;cursor:pointer"
+            onmouseover="this.style.filter='brightness(1.15)'" onmouseout="this.style.filter=''">
+            🤖 A.I. Intelligence
+          </a>
         </div>
       </div>
 
@@ -2571,6 +2604,73 @@ async function saveProfile() {
     showUserPage('profile', null);
     document.querySelectorAll('.nav-item')[1]?.classList.add('active');
   } catch(e) { showToast('Errore aggiornamento', 'error'); }
+}
+
+// ===== UTILITY MODAL =====
+async function openUtilityModal() {
+  openModal(`
+    <div class="modal-title">
+      <span>⚙ Utility — Sistema</span>
+      <span class="modal-close" onclick="closeModalDirect()">✕</span>
+    </div>
+    <div id="utility-body" style="min-height:120px;display:flex;align-items:center;justify-content:center">
+      <span style="color:var(--text-muted);font-size:13px">Caricamento statistiche...</span>
+    </div>
+  `);
+  try {
+    const stats = await apiFetch('/admin/db-stats');
+    const totalMB = (stats.total.total_bytes / 1048576).toFixed(2);
+    const maxBytes = stats.tables[0]?.size_bytes || 1;
+    const colors = ['var(--gold)','#3498db','#2ecc71','#e67e22','#9b59b6','#e74c3c','#1abc9c','#f39c12'];
+    document.getElementById('utility-body').innerHTML = `
+      <div class="db-total-box">
+        <div>
+          <div class="db-total-label">Database Totale</div>
+          <div class="db-total-val">${totalMB} MB</div>
+        </div>
+        <div style="font-size:2.5rem">🗄️</div>
+      </div>
+      <div style="font-size:11px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:12px">Tabelle</div>
+      ${stats.tables.map((t,i) => {
+        const mb = (t.size_bytes / 1048576).toFixed(3);
+        const pct = Math.max(2, Math.round((t.size_bytes / maxBytes) * 100));
+        const col = colors[i % colors.length];
+        return `<div class="db-bar-wrap">
+          <div class="db-bar-label">
+            <span style="color:var(--text)">${t.tablename}</span>
+            <span>${mb} MB &nbsp;·&nbsp; ${Number(t.rows).toLocaleString()} righe</span>
+          </div>
+          <div class="db-bar-track">
+            <div class="db-bar-fill" style="width:${pct}%;background:linear-gradient(90deg,${col}99,${col})"></div>
+          </div>
+        </div>`;
+      }).join('')}
+      <div class="btn-row" style="margin-top:24px;justify-content:center">
+        <button class="btn-sm btn-primary" onclick="downloadDbBackup()">💾 Salva Backup Database</button>
+        <button class="btn-sm btn-secondary" onclick="closeModalDirect()">Chiudi</button>
+      </div>
+    `;
+  } catch(e) {
+    document.getElementById('utility-body').innerHTML = '<div style="color:#e74c3c">Errore caricamento statistiche</div>';
+  }
+}
+
+async function downloadDbBackup() {
+  try {
+    showToast('Generazione backup in corso...');
+    const res = await fetch('/api/admin/db-backup', {
+      headers: { Authorization: 'Bearer ' + authToken }
+    });
+    if(!res.ok) throw new Error();
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `adsecurity-backup-${new Date().toISOString().substring(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Backup scaricato ✓');
+  } catch(e) { showToast('Errore backup', 'error'); }
 }
 
 async function saveMatricola() {

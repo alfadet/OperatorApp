@@ -477,6 +477,45 @@ app.delete('/api/urgent-messages/:id', auth, adminOnly, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── UTILITY / DB STATS ───────────────────────────────────────────────────────
+app.get('/api/admin/db-stats', auth, adminOnly, async (req, res) => {
+  try {
+    const totalR = await pool.query(
+      `SELECT pg_database_size(current_database()) as total_bytes,
+              pg_size_pretty(pg_database_size(current_database())) as total_pretty`
+    );
+    const tablesR = await pool.query(
+      `SELECT t.tablename,
+              pg_total_relation_size(t.tablename::regclass) as size_bytes,
+              pg_size_pretty(pg_total_relation_size(t.tablename::regclass)) as size_pretty,
+              COALESCE(s.n_live_tup, 0) as rows
+       FROM pg_catalog.pg_tables t
+       LEFT JOIN pg_stat_user_tables s ON s.relname = t.tablename
+       WHERE t.schemaname = 'public'
+       ORDER BY size_bytes DESC`
+    );
+    res.json({ total: totalR.rows[0], tables: tablesR.rows });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/admin/db-backup', auth, adminOnly, async (req, res) => {
+  try {
+    const tables = await pool.query(
+      `SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname='public' ORDER BY tablename`
+    );
+    const backup = { exported_at: new Date().toISOString(), tables: {} };
+    for (const { tablename } of tables.rows) {
+      const r = await pool.query(`SELECT * FROM "${tablename}"`);
+      backup.tables[tablename] = r.rows;
+    }
+    const json = JSON.stringify(backup, null, 2);
+    const filename = `adsecurity-backup-${new Date().toISOString().substring(0,10)}.json`;
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'application/json');
+    res.send(json);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── HEALTH ────────────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 

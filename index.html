@@ -1060,6 +1060,33 @@ textarea.field-input { resize:vertical; min-height:100px; line-height:1.5; }
 .hamburger-btn { display:none; }
 .sidebar-overlay { display:none; }
 
+/* MacBook / laptop (1024px+): centra il contenuto con max-width */
+@media(min-width:769px) {
+  .content { padding: 28px max(28px, calc((100% - 1080px) / 2)); }
+}
+
+/* Banner PWA install */
+#pwa-banner {
+  position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+  background:var(--bg2); border:1px solid var(--border-gold);
+  border-radius:12px; padding:14px 20px;
+  display:flex; align-items:center; gap:14px;
+  box-shadow:0 4px 24px rgba(0,0,0,0.6);
+  z-index:9999; max-width:480px; width:calc(100% - 40px);
+  animation:slideUp 0.4s ease;
+}
+#pwa-banner .pwa-icon { font-size:28px; flex-shrink:0; }
+#pwa-banner .pwa-text { flex:1; }
+#pwa-banner .pwa-text strong { display:block; font-size:13px; color:var(--text); letter-spacing:1px; }
+#pwa-banner .pwa-text span { font-size:11px; color:var(--text-muted); line-height:1.5; }
+#pwa-banner .pwa-actions { display:flex; gap:8px; flex-shrink:0; }
+#pwa-banner .pwa-install-btn {
+  padding:7px 16px; background:linear-gradient(135deg,var(--gold-dark),var(--gold));
+  color:#000; border:none; border-radius:6px;
+  font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;
+}
+#pwa-banner .pwa-dismiss { background:none; border:none; color:var(--text-muted); font-size:18px; cursor:pointer; padding:4px; }
+
 @media(max-width:768px) {
   /* Hamburger button */
   .hamburger-btn {
@@ -1185,6 +1212,7 @@ textarea.field-input { resize:vertical; min-height:100px; line-height:1.5; }
 
 <!-- TOAST -->
 <div id="toast"></div>
+<div id="pwa-banner" style="display:none"></div>
 
 <!-- MODAL -->
 <div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
@@ -1231,6 +1259,60 @@ function playSwoosh() {
     src.start(_audioCtx.currentTime);
     src.stop(_audioCtx.currentTime + 0.36);
   } catch(e) {}
+}
+
+// ===== PWA INSTALL PROMPT =====
+let _pwaPrompt = null;
+const _isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+const _isInStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  _pwaPrompt = e;
+});
+
+function showPwaBanner() {
+  if(_isInStandalone) return; // già installata
+  if(localStorage.getItem('pwa-dismissed')) return;
+  const banner = document.getElementById('pwa-banner');
+  if(!banner) return;
+  if(_isIOS) {
+    banner.innerHTML = `
+      <div class="pwa-icon">📲</div>
+      <div class="pwa-text">
+        <strong>Installa App</strong>
+        <span>Tocca <strong>⬆ Condividi</strong> poi <strong>"Aggiungi a schermata Home"</strong></span>
+      </div>
+      <div class="pwa-actions">
+        <button class="pwa-dismiss" onclick="dismissPwaBanner()">✕</button>
+      </div>`;
+  } else {
+    banner.innerHTML = `
+      <div class="pwa-icon">📲</div>
+      <div class="pwa-text">
+        <strong>Installa App</strong>
+        <span>Accedi velocemente dal tuo dispositivo</span>
+      </div>
+      <div class="pwa-actions">
+        <button class="pwa-install-btn" onclick="installPwa()">Installa</button>
+        <button class="pwa-dismiss" onclick="dismissPwaBanner()">✕</button>
+      </div>`;
+  }
+  banner.style.display = 'flex';
+}
+
+async function installPwa() {
+  if(!_pwaPrompt) return;
+  _pwaPrompt.prompt();
+  const { outcome } = await _pwaPrompt.userChoice;
+  _pwaPrompt = null;
+  dismissPwaBanner();
+}
+
+function dismissPwaBanner() {
+  const banner = document.getElementById('pwa-banner');
+  if(banner) banner.style.display = 'none';
+  localStorage.setItem('pwa-dismissed', '1');
 }
 
 // Click su tutti i pulsanti
@@ -1380,6 +1462,7 @@ function loginAs(user) {
     document.getElementById('topbar-title').textContent = 'Dashboard Operatore';
     buildUserUI();
   }
+  setTimeout(showPwaBanner, 2000);
 }
 
 function doLogout() {

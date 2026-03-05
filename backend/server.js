@@ -36,6 +36,7 @@ app.post('/api/auth/login', async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Email o password non corretti' });
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) return res.status(401).json({ error: 'Email o password non corretti' });
+    if (user.blocked && !user.is_admin) return res.status(403).json({ error: 'Account sospeso. Contatta l\'amministratore.' });
     const token = jwt.sign(
       { id: user.id, email: user.email, is_admin: user.is_admin, nome: user.nome, cognome: user.cognome },
       JWT_SECRET, { expiresIn: '24h' }
@@ -62,7 +63,7 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 // ── USERS ─────────────────────────────────────────────────────────────────────
-const USER_COLS = 'id,email,is_admin,nome,cognome,telefono,indirizzo,data_nascita,codice_fiscale,nr_matricola,matricola_rilasciata,matricola_scadenza,iban,created_at';
+const USER_COLS = 'id,email,is_admin,nome,cognome,telefono,indirizzo,data_nascita,codice_fiscale,nr_matricola,matricola_rilasciata,matricola_scadenza,iban,blocked,created_at';
 
 app.get('/api/users', auth, adminOnly, async (req, res) => {
   try {
@@ -474,6 +475,31 @@ app.delete('/api/urgent-messages/:id', auth, adminOnly, async (req, res) => {
   try {
     await pool.query('DELETE FROM urgent_messages WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── GESTIONE UTENTI (block/unblock/reset-password) ───────────────────────────
+app.patch('/api/users/:id/block', auth, adminOnly, async (req, res) => {
+  try {
+    const r = await pool.query(`UPDATE users SET blocked=TRUE WHERE id=$1 RETURNING ${USER_COLS}`, [req.params.id]);
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.patch('/api/users/:id/unblock', auth, adminOnly, async (req, res) => {
+  try {
+    const r = await pool.query(`UPDATE users SET blocked=FALSE WHERE id=$1 RETURNING ${USER_COLS}`, [req.params.id]);
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.patch('/api/users/:id/password', auth, adminOnly, async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password || password.length < 4) return res.status(400).json({ error: 'Password troppo corta (min 4 caratteri)' });
+    const hash = await bcrypt.hash(password, 10);
+    const r = await pool.query(`UPDATE users SET password_hash=$1 WHERE id=$2 RETURNING ${USER_COLS}`, [hash, req.params.id]);
+    res.json(r.rows[0]);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

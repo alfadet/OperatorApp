@@ -63,7 +63,7 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 // ── USERS ─────────────────────────────────────────────────────────────────────
-const USER_COLS = 'id,email,is_admin,nome,cognome,telefono,indirizzo,data_nascita,codice_fiscale,nr_matricola,matricola_rilasciata,matricola_scadenza,iban,blocked,created_at';
+const USER_COLS = 'id,email,is_admin,nome,cognome,telefono,indirizzo,data_nascita,codice_fiscale,nr_matricola,matricola_rilasciata,matricola_scadenza,iban,blocked,disclaimer_accepted,disclaimer_accepted_at,created_at';
 
 app.get('/api/users', auth, adminOnly, async (req, res) => {
   try {
@@ -479,6 +479,19 @@ app.delete('/api/urgent-messages/:id', auth, adminOnly, async (req, res) => {
 });
 
 // ── GESTIONE UTENTI (block/unblock/reset-password) ───────────────────────────
+app.patch('/api/users/:id/disclaimer', auth, async (req, res) => {
+  try {
+    if (!req.user.is_admin && req.user.id !== req.params.id)
+      return res.status(403).json({ error: 'Accesso negato' });
+    const { accepted } = req.body;
+    const r = await pool.query(
+      `UPDATE users SET disclaimer_accepted=$1, disclaimer_accepted_at=$2 WHERE id=$3 RETURNING ${USER_COLS}`,
+      [accepted, accepted ? new Date() : null, req.params.id]
+    );
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.patch('/api/users/:id/block', auth, adminOnly, async (req, res) => {
   try {
     const r = await pool.query(`UPDATE users SET blocked=TRUE WHERE id=$1 RETURNING ${USER_COLS}`, [req.params.id]);

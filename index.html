@@ -1628,7 +1628,7 @@ async function renderAdminUsers(content, searchQ) {
       <div class="table-wrap">
         <table>
           <thead><tr>
-            <th>Nome</th><th>Cognome</th><th>Email</th><th>Telefono</th><th>Registrato</th><th>Azioni</th>
+            <th>Nome</th><th>Cognome</th><th>Email</th><th>Telefono</th><th>Privacy</th><th>Registrato</th><th>Azioni</th>
           </tr></thead>
           <tbody>
             ${users.map(u => `
@@ -1637,11 +1637,15 @@ async function renderAdminUsers(content, searchQ) {
                 <td>${u.cognome||'—'}</td>
                 <td>${u.email}</td>
                 <td>${u.telefono||'—'}</td>
+                <td>${u.disclaimer_accepted
+                  ? `<span class="gu-badge attivo">✅ Accettato</span>`
+                  : `<span class="gu-badge bloccato">❌ Non accettato</span>`}</td>
                 <td>${fmtDate(u.created_at)}</td>
                 <td>
                   <div class="action-btns">
                     <button class="btn-sm btn-secondary" onclick="adminViewUser('${u.id}')">👁 Profilo</button>
                     <button class="btn-sm btn-primary" onclick="adminEditUser('${u.id}')">✏️ Modifica</button>
+                    <button class="btn-sm" style="background:rgba(52,152,219,0.15);color:#3498db;border:1px solid rgba(52,152,219,0.3)" onclick="adminPrintUser('${u.id}')">🖨 Stampa</button>
                     <button class="btn-sm btn-danger" onclick="adminDeleteUser('${u.id}')">🗑 Elimina</button>
                   </div>
                 </td>
@@ -1687,7 +1691,11 @@ async function adminViewUser(id) {
       <div class="profile-field"><div class="profile-field-label">Nr. Matricola</div><div class="profile-field-val">${u.nr_matricola||'—'}</div></div>
       <div class="profile-field"><div class="profile-field-label">Matricola Rilasciata</div><div class="profile-field-val">${u.matricola_rilasciata ? u.matricola_rilasciata.substring(0,10) : '—'}</div></div>
       <div class="profile-field"><div class="profile-field-label">Matricola Scadenza</div><div class="profile-field-val" style="${u.matricola_scadenza && new Date(u.matricola_scadenza) < new Date() ? 'color:#e74c3c;font-weight:700' : ''}">${u.matricola_scadenza ? u.matricola_scadenza.substring(0,10) : '—'}${u.matricola_scadenza && new Date(u.matricola_scadenza) < new Date() ? ' ⚠️ SCADUTA' : ''}</div></div>
+      <div class="profile-field"><div class="profile-field-label">Privacy Disclaimer</div><div class="profile-field-val">${u.disclaimer_accepted ? `<span style="color:#2ecc71">✅ Accettato${u.disclaimer_accepted_at ? ' il ' + new Date(u.disclaimer_accepted_at).toLocaleDateString('it-IT') : ''}</span>` : '<span style="color:#e74c3c">❌ Non accettato</span>'}</div></div>
       <div class="profile-field"><div class="profile-field-label">Registrato</div><div class="profile-field-val">${fmtDate(u.created_at)}</div></div>
+    </div>
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn-sm" style="background:rgba(52,152,219,0.15);color:#3498db;border:1px solid rgba(52,152,219,0.3)" onclick="adminPrintUser('${u.id}')">🖨 Stampa Scheda PDF</button>
     </div>
 
     <div style="margin-top:20px">
@@ -2588,6 +2596,27 @@ function renderUserProfile(content) {
         <button class="btn-sm btn-primary" onclick="saveMatricola()">${u.nr_matricola ? '🔄 Aggiorna' : '💾 Salva'} Matricola</button>
       </div>
     </div>
+
+    <div class="card" style="margin-top:16px;border-color:rgba(201,162,39,0.3)">
+      <div class="card-title">🔏 Privacy & Disclaimer</div>
+      <div style="font-size:12px;color:var(--text-muted);line-height:1.8;margin-bottom:18px;padding:14px;background:rgba(201,162,39,0.05);border-radius:8px;border:1px solid rgba(201,162,39,0.15)">
+        <strong style="color:var(--text);font-size:13px;display:block;margin-bottom:8px">Disclaimer privacy operatori</strong>
+        I dati personali inseriti nel gestionale di Alfa Security sono trattati esclusivamente per finalità amministrative e operative interne.<br><br>
+        Titolare del trattamento dei dati è <strong style="color:var(--gold)">Tiziano Loss</strong>, amministratore unico della società Alfa Security.<br><br>
+        Gli operatori possono richiedere in qualsiasi momento accesso, modifica o cancellazione dei propri dati nei limiti previsti dal Regolamento Generale sulla Protezione dei Dati e dalla normativa vigente.
+      </div>
+      <label style="display:flex;align-items:center;gap:12px;cursor:pointer;padding:12px;border-radius:8px;border:1px solid ${u.disclaimer_accepted ? 'rgba(46,204,113,0.4)' : 'var(--border)'};background:${u.disclaimer_accepted ? 'rgba(46,204,113,0.06)' : 'var(--bg3)'}">
+        <input type="checkbox" id="disclaimer-cb" ${u.disclaimer_accepted ? 'checked' : ''}
+          onchange="saveDisclaimer(this.checked)"
+          style="width:18px;height:18px;accent-color:var(--gold);cursor:pointer;flex-shrink:0">
+        <div>
+          <div style="font-size:13px;color:var(--text);font-weight:600">Ho letto e accetto il disclaimer sulla privacy</div>
+          ${u.disclaimer_accepted && u.disclaimer_accepted_at
+            ? `<div style="font-size:11px;color:#2ecc71;margin-top:2px">✅ Accettato il ${new Date(u.disclaimer_accepted_at).toLocaleDateString('it-IT')}</div>`
+            : `<div style="font-size:11px;color:var(--text-muted);margin-top:2px">Non ancora accettato</div>`}
+        </div>
+      </label>
+    </div>
   `;
 }
 
@@ -2875,6 +2904,154 @@ async function downloadDbBackup() {
     URL.revokeObjectURL(url);
     showToast('Backup scaricato ✓');
   } catch(e) { showToast('Errore backup', 'error'); }
+}
+
+// ===== STAMPA SCHEDA OPERATORE PDF =====
+async function adminPrintUser(id) {
+  showToast('Generazione PDF in corso...');
+  try {
+    const [u, docs] = await Promise.all([apiFetch(`/users/${id}`), apiFetch(`/documents/${id}`)]);
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const W = 210, H = 297;
+    const now = new Date().toLocaleDateString('it-IT', { day:'2-digit', month:'long', year:'numeric' });
+    const nomeCognome = `${u.nome||''} ${u.cognome||''}`.trim() || u.email;
+
+    // ── Sfondo ──
+    doc.setFillColor(13, 11, 2);
+    doc.rect(0, 0, W, H, 'F');
+
+    // ── Header band ──
+    doc.setFillColor(15, 12, 0);
+    doc.rect(0, 0, W, 42, 'F');
+    doc.setDrawColor(201, 162, 39);
+    doc.setLineWidth(0.8);
+    doc.line(0, 42, W, 42);
+
+    // Monogramma AD
+    doc.setFillColor(201, 162, 39);
+    doc.roundedRect(12, 7, 28, 28, 3, 3, 'F');
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+    doc.text('AD', 26, 24, { align: 'center' });
+
+    // Titolo header
+    doc.setTextColor(201, 162, 39);
+    doc.setFontSize(16); doc.setFont('helvetica', 'bold');
+    doc.text('ALFA SECURITY', 48, 18);
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+    doc.setTextColor(180, 155, 90);
+    doc.text('Sistema Professionale Gestione Operatori', 48, 25);
+    doc.setTextColor(120, 110, 80);
+    doc.text(`Documento generato il ${now}`, 48, 32);
+
+    // ── Titolo scheda ──
+    doc.setFillColor(20, 16, 3);
+    doc.rect(0, 44, W, 18, 'F');
+    doc.setTextColor(201, 162, 39);
+    doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+    doc.text('SCHEDA OPERATORE', W/2, 55, { align: 'center' });
+    doc.setFontSize(10); doc.setFont('helvetica', 'normal');
+    doc.setTextColor(220, 200, 130);
+    doc.text(nomeCognome.toUpperCase(), W/2, 60, { align: 'center' });
+
+    // ── Sezione dati personali ──
+    let y = 72;
+    const addSection = (title) => {
+      doc.setFillColor(25, 20, 5);
+      doc.rect(10, y, W-20, 7, 'F');
+      doc.setDrawColor(201, 162, 39); doc.setLineWidth(0.4);
+      doc.line(10, y+7, W-10, y+7);
+      doc.setTextColor(201, 162, 39); doc.setFontSize(8); doc.setFont('helvetica', 'bold');
+      doc.text(title.toUpperCase(), 14, y+5);
+      y += 10;
+    };
+    const addRow = (label, value, highlight) => {
+      if(y > 265) { doc.addPage(); doc.setFillColor(13,11,2); doc.rect(0,0,W,H,'F'); y = 15; }
+      doc.setTextColor(120, 110, 80); doc.setFontSize(7.5); doc.setFont('helvetica', 'normal');
+      doc.text(label + ':', 14, y);
+      doc.setTextColor(highlight ? 201 : 220, highlight ? 162 : 210, highlight ? 39 : 180);
+      doc.setFont('helvetica', highlight ? 'bold' : 'normal');
+      doc.text(value || '—', 65, y);
+      doc.setDrawColor(40, 35, 10); doc.setLineWidth(0.2);
+      doc.line(10, y+2, W-10, y+2);
+      y += 7;
+    };
+
+    addSection('📋 Dati Anagrafici');
+    addRow('Nome', u.nome); addRow('Cognome', u.cognome);
+    addRow('Email', u.email); addRow('Telefono', u.telefono);
+    addRow('Indirizzo', u.indirizzo);
+    addRow('Data di Nascita', u.data_nascita ? u.data_nascita.substring(0,10) : null);
+    addRow('Codice Fiscale', u.codice_fiscale);
+    addRow('IBAN', u.iban);
+    y += 3;
+
+    addSection('🪪 Matricola ASC');
+    addRow('Nr. Matricola', u.nr_matricola, true);
+    addRow('Data Rilasciata', u.matricola_rilasciata ? u.matricola_rilasciata.substring(0,10) : null);
+    addRow('Data Scadenza', u.matricola_scadenza ? u.matricola_scadenza.substring(0,10) : null,
+      u.matricola_scadenza && new Date(u.matricola_scadenza) < new Date());
+    y += 3;
+
+    addSection('🔏 Privacy');
+    addRow('Disclaimer Accettato', u.disclaimer_accepted ? `Sì — ${u.disclaimer_accepted_at ? new Date(u.disclaimer_accepted_at).toLocaleDateString('it-IT') : ''}` : 'No');
+    addRow('Registrato il', new Date(u.created_at).toLocaleDateString('it-IT'));
+    y += 5;
+
+    // ── Documenti / Foto ──
+    const docLabels = {
+      foto_selfie:'Foto Selfie', carta_identita:"Carta d'Identità",
+      codice_fiscale_doc:'Codice Fiscale', permesso_soggiorno:'Permesso Soggiorno',
+      attestato_vvff:'Attestato VVFF', attestato_asc:'Attestato ASC',
+      istanza_questura:'Istanza Questura', tesserino_asc:'Tesserino ASC'
+    };
+    const imgDocs = Object.entries(docLabels).filter(([k]) => docs[k] && docs[k].mime_type && docs[k].mime_type.startsWith('image/'));
+    if(imgDocs.length > 0) {
+      addSection('📁 Documenti Allegati');
+      const imgW = 85, imgH = 60, marginX = 10, gap = 10;
+      let col = 0;
+      for(const [k, label] of imgDocs) {
+        const d = docs[k];
+        if(y + imgH + 16 > 275) { doc.addPage(); doc.setFillColor(13,11,2); doc.rect(0,0,W,H,'F'); y = 15; col = 0; }
+        const x = marginX + col * (imgW + gap);
+        doc.setDrawColor(201, 162, 39); doc.setLineWidth(0.4);
+        doc.rect(x, y, imgW, imgH);
+        try { doc.addImage(d.data, d.mime_type.includes('png') ? 'PNG' : 'JPEG', x+1, y+1, imgW-2, imgH-2, undefined, 'FAST'); } catch(e) {}
+        doc.setTextColor(150, 130, 60); doc.setFontSize(7); doc.setFont('helvetica', 'normal');
+        doc.text(label, x + imgW/2, y + imgH + 5, { align: 'center' });
+        col++;
+        if(col >= 2) { col = 0; y += imgH + 14; }
+      }
+      if(col > 0) y += imgH + 14;
+    }
+
+    // ── Footer ──
+    const pages = doc.internal.getNumberOfPages();
+    for(let i = 1; i <= pages; i++) {
+      doc.setPage(i);
+      doc.setDrawColor(201, 162, 39); doc.setLineWidth(0.4);
+      doc.line(10, H-14, W-10, H-14);
+      doc.setTextColor(100, 90, 50); doc.setFontSize(7); doc.setFont('helvetica', 'normal');
+      doc.text('Alfa Security — Documento riservato ad uso interno', 14, H-9);
+      doc.text(`Pag. ${i} / ${pages}`, W-14, H-9, { align: 'right' });
+    }
+
+    const filename = `Scheda operatore ${nomeCognome}.pdf`;
+    doc.save(filename);
+    showToast('PDF scaricato ✓');
+  } catch(e) { showToast('Errore generazione PDF', 'error'); console.error(e); }
+}
+
+async function saveDisclaimer(accepted) {
+  try {
+    const updated = await apiFetch(`/users/${currentUser.id}/disclaimer`, {
+      method:'PATCH', body: JSON.stringify({ accepted })
+    });
+    currentUser = {...currentUser, ...updated};
+    showToast(accepted ? 'Disclaimer accettato ✓' : 'Disclaimer rimosso');
+    renderUserProfile(document.getElementById('content'));
+  } catch(e) { showToast('Errore salvataggio disclaimer', 'error'); }
 }
 
 async function saveMatricola() {

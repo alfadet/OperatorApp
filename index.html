@@ -5069,41 +5069,43 @@ async function tesseraView(tesseraId, userId) {
 }
 
 function buildTesseraHtml(user, fotoData, fotoMime, lato) {
-  // 95mm x 55mm — scala 3px/mm => 285px x 165px
-  const W = 285, H = 165;
+  // 95mm x 55mm — scala 4px/mm => 380px x 220px
+  const W = 380, H = 220;
   const fmt = v => v ? v.substring(0,10).split('-').reverse().join('/') : '—';
-  const hdrH = 34;
+  const hdrH = 44;
+  // fotoData è già una data URL completa (data:image/...;base64,...)
+  const fotoSrc = fotoData || null;
   if(lato === 'fronte') {
     return `
-    <div style="width:${W}px;height:${H}px;position:relative;border-radius:8px;overflow:hidden;border:2px solid #c9a227;font-family:Arial,sans-serif;background:#FFD700;flex-shrink:0;box-shadow:0 4px 16px rgba(0,0,0,0.4)">
+    <div style="width:${W}px;height:${H}px;position:relative;border-radius:10px;overflow:hidden;border:2px solid #c9a227;font-family:Arial,sans-serif;background:#FFD700;flex-shrink:0;box-shadow:0 6px 24px rgba(0,0,0,0.5)">
       <div style="position:absolute;top:0;left:0;right:0;height:${hdrH}px;background:#000;display:flex;align-items:center;justify-content:center">
-        <span style="color:#FFD700;font-weight:900;font-size:17px;letter-spacing:5px">ALFA SECURITY</span>
+        <span style="color:#FFD700;font-weight:900;font-size:22px;letter-spacing:6px">ALFA SECURITY</span>
       </div>
-      <div style="position:absolute;top:${hdrH+6}px;left:8px;width:62px;height:${H-hdrH-14}px;background:#ccc;border:2px solid #999;border-radius:4px;overflow:hidden;display:flex;align-items:center;justify-content:center">
-        ${fotoData ? `<img src="data:${fotoMime};base64,${fotoData}" style="width:100%;height:100%;object-fit:cover">` : '<span style="color:#666;font-size:9px;text-align:center;padding:4px">Foto<br>assente</span>'}
+      <div style="position:absolute;top:${hdrH+8}px;left:10px;width:80px;height:${H-hdrH-20}px;background:#ccc;border:2px solid #999;border-radius:4px;overflow:hidden;display:flex;align-items:center;justify-content:center">
+        ${fotoSrc ? `<img src="${fotoSrc}" style="width:100%;height:100%;object-fit:cover">` : '<span style="color:#666;font-size:10px;text-align:center;padding:4px">Foto<br>assente</span>'}
       </div>
-      <div style="position:absolute;top:${hdrH+6}px;left:80px;right:8px;bottom:20px;display:flex;align-items:center;justify-content:center">
-        <span style="color:#CC0000;font-weight:900;font-size:24px;letter-spacing:2px;text-align:center;line-height:1.2;text-shadow:1px 1px 0 rgba(0,0,0,0.15)">ASSISTENZA</span>
+      <div style="position:absolute;top:${hdrH+8}px;left:104px;right:10px;bottom:22px;display:flex;align-items:center;justify-content:center">
+        <span style="color:#CC0000;font-weight:900;font-size:30px;letter-spacing:2px;text-align:center;text-shadow:1px 1px 0 rgba(0,0,0,0.1)">ASSISTENZA</span>
       </div>
-      <div style="position:absolute;bottom:5px;left:8px;right:8px;text-align:center">
-        <span style="color:#7a5c00;font-size:7.5px;letter-spacing:1px;font-weight:700">TESSERA DI RICONOSCIMENTO ASC</span>
+      <div style="position:absolute;bottom:6px;left:10px;right:10px;text-align:center">
+        <span style="color:#7a5c00;font-size:9px;letter-spacing:1px;font-weight:700">TESSERA DI RICONOSCIMENTO ASC</span>
       </div>
     </div>`;
   } else {
     return `
-    <div style="width:${W}px;height:${H}px;position:relative;border-radius:8px;overflow:hidden;border:2px solid #c9a227;font-family:Arial,sans-serif;background:#FFD700;flex-shrink:0;box-shadow:0 4px 16px rgba(0,0,0,0.4)">
+    <div style="width:${W}px;height:${H}px;position:relative;border-radius:10px;overflow:hidden;border:2px solid #c9a227;font-family:Arial,sans-serif;background:#FFD700;flex-shrink:0;box-shadow:0 6px 24px rgba(0,0,0,0.5)">
       <div style="position:absolute;top:0;left:0;right:0;height:${hdrH}px;background:#000;display:flex;align-items:center;justify-content:center">
-        <span style="color:#FFD700;font-weight:900;font-size:17px;letter-spacing:5px">ALFA SECURITY</span>
+        <span style="color:#FFD700;font-weight:900;font-size:22px;letter-spacing:6px">ALFA SECURITY</span>
       </div>
-      <div style="position:absolute;top:${hdrH+6}px;left:10px;right:10px;color:#000;font-size:11px;line-height:2">
-        <div><strong style="font-size:13px">${user.nome||'—'} ${user.cognome||''}</strong></div>
+      <div style="position:absolute;top:${hdrH+8}px;left:12px;right:12px;color:#000;font-size:13px;line-height:1.45">
+        <div style="margin-bottom:4px"><strong style="font-size:15px">${user.nome||'—'} ${user.cognome||''}</strong></div>
         <div><strong>Data di nascita: ${fmt(user.data_nascita)}</strong></div>
         <div><strong>Nr. Matricola: ${user.nr_matricola||'—'}</strong></div>
         <div><strong>Rilasciata: ${fmt(user.matricola_rilasciata)}</strong></div>
         <div><strong>Scadenza: ${fmt(user.matricola_scadenza)}</strong></div>
       </div>
-      <div style="position:absolute;bottom:0;left:0;right:0;height:20px;background:#000;display:flex;align-items:center;justify-content:center">
-        <span style="color:#aaa;font-size:7px;letter-spacing:0.5px">Alfa Security • Via Roma 35 • Tel 0461-421049 • Amm. Unico: Loss Tiziano</span>
+      <div style="position:absolute;bottom:0;left:0;right:0;height:24px;background:#000;display:flex;align-items:center;justify-content:center">
+        <span style="color:#aaa;font-size:8.5px;letter-spacing:0.5px">Alfa Security • Via Roma 35 • Tel 0461-421049 • Amm. Unico: Loss Tiziano</span>
       </div>
     </div>`;
   }

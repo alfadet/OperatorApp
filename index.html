@@ -2536,13 +2536,14 @@ async function renderUserDashboard(content) {
   let unread = 0, docsUploaded = 0, rulesPending = 0;
   let activeUrgent = [], unreadMsgs = [], sentToAdmin = [];
   try {
-    const [msgs, docs, urgentAll, rules, rulesLog, incomingAll] = await Promise.all([
+    const [msgs, docs, urgentAll, rules, rulesLog, incomingAll, tessera] = await Promise.all([
       apiFetch('/messages'),
       apiFetch(`/documents/${u.id}`),
       apiFetch('/urgent-messages'),
       apiFetch('/rules'),
       apiFetch('/rules-log'),
-      apiFetch('/incoming-messages/mine')
+      apiFetch('/incoming-messages/mine'),
+      apiFetch('/tessere/mine').catch(() => null)
     ]);
     activeUrgent = urgentAll.filter(m => new Date(m.expires_at) > new Date());
     docsUploaded = Object.keys(docs).length;
@@ -2649,6 +2650,20 @@ async function renderUserDashboard(content) {
           </div>`).join('')}
       </div>` : ''}
     </div>
+
+    ${tessera ? `
+    <div class="card" style="border-color:rgba(201,162,39,0.5);background:linear-gradient(135deg,rgba(201,162,39,0.08),var(--bg2));margin-top:16px">
+      <div class="card-title" style="border-bottom-color:rgba(201,162,39,0.3)">
+        🪪 La tua Tessera ASC
+      </div>
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px">
+        La tua tessera di riconoscimento è stata generata dall'amministratore.
+      </div>
+      <button class="btn-primary" style="background:linear-gradient(135deg,#7a5c00,#c9a227);border-color:rgba(201,162,39,0.5);color:#fff700;font-weight:700;font-size:1rem;padding:14px 28px"
+        onclick="viewMyTessera()">
+        🪪 Guarda la tua Tessera ASC
+      </button>
+    </div>` : ''}
   `;
 
   // Auto-refresh countdown every 60s
@@ -2660,6 +2675,62 @@ async function renderUserDashboard(content) {
       }
     }, 60000);
   }
+}
+
+async function viewMyTessera() {
+  try {
+    const [user, docs] = await Promise.all([
+      apiFetch(`/users/${currentUser.id}`),
+      apiFetch(`/documents/${currentUser.id}`)
+    ]);
+    const fotoData = docs.foto_selfie ? docs.foto_selfie.data : null;
+    const fotoMime = docs.foto_selfie ? docs.foto_selfie.mime_type : null;
+    const htmlFronte = buildTesseraHtml(user, fotoData, fotoMime, 'fronte');
+    const htmlRetro  = buildTesseraHtml(user, fotoData, fotoMime, 'retro');
+    openModal(`
+      <div class="modal-title">
+        <span>🪪 La tua Tessera ASC</span>
+        <span class="modal-close" onclick="closeModalDirect()">✕</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:16px;margin-bottom:20px">
+        <div style="font-size:11px;color:var(--text-muted);text-align:center">FRONTE</div>
+        ${htmlFronte}
+        <div style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:8px">RETRO</div>
+        ${htmlRetro}
+      </div>
+      <div class="btn-row" style="justify-content:center;gap:12px">
+        <button class="btn-primary" style="background:linear-gradient(135deg,#7a5c00,#c9a227);color:#fff700;border-color:rgba(201,162,39,0.5);font-weight:700"
+          onclick="tesseraStampa('${user.id}')">
+          💾 Scarica PDF
+        </button>
+        <button class="btn-sm btn-secondary" onclick="myTesseraPrint('${user.id}')">🖨 Stampa</button>
+        <button class="btn-sm btn-secondary" onclick="closeModalDirect()">Chiudi</button>
+      </div>
+    `, true);
+  } catch(e) { showToast('Errore caricamento tessera', 'error'); }
+}
+
+async function myTesseraPrint(userId) {
+  try {
+    const [user, docs] = await Promise.all([
+      apiFetch(`/users/${userId}`),
+      apiFetch(`/documents/${userId}`)
+    ]);
+    const fotoData = docs.foto_selfie ? docs.foto_selfie.data : null;
+    const fotoMime = docs.foto_selfie ? docs.foto_selfie.mime_type : null;
+    const htmlFronte = buildTesseraHtml(user, fotoData, fotoMime, 'fronte');
+    const htmlRetro  = buildTesseraHtml(user, fotoData, fotoMime, 'retro');
+    const win = window.open('', '_blank');
+    win.document.write(`<!DOCTYPE html><html><head><title>Tessera ASC - ${user.nome||''} ${user.cognome||''}</title>
+      <style>body{margin:20px;background:#fff;display:flex;flex-direction:column;align-items:center;gap:24px;font-family:Arial}
+      h3{color:#333;font-size:13px;letter-spacing:2px;text-transform:uppercase;margin:0}
+      @media print{h3{display:none}}</style></head>
+      <body onload="window.print()">
+        <h3>FRONTE</h3>${htmlFronte}
+        <h3 style="margin-top:16px">RETRO</h3>${htmlRetro}
+      </body></html>`);
+    win.document.close();
+  } catch(e) { showToast('Errore stampa', 'error'); }
 }
 
 function renderUserProfile(content) {

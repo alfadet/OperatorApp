@@ -517,6 +517,13 @@ app.patch('/api/users/:id/password', auth, adminOnly, async (req, res) => {
 });
 
 // ── TESSERE ASC ───────────────────────────────────────────────────────────────
+app.get('/api/tessere/mine', auth, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM tessere WHERE user_id=$1 ORDER BY created_at DESC LIMIT 1', [req.user.id]);
+    res.json(r.rows[0] || null);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/tessere', auth, adminOnly, async (req, res) => {
   try {
     const r = await pool.query('SELECT * FROM tessere ORDER BY created_at DESC');

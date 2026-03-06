@@ -2667,15 +2667,16 @@ function renderUserProfile(content) {
   content.innerHTML = `
     <div class="card">
       <div class="card-title">👤 Dati Personali</div>
+      <div id="profile-save-status" style="font-size:12px;color:#2ecc71;margin-bottom:10px;display:none">✓ Salvato automaticamente</div>
       <div id="profile-error" class="error-banner"></div>
       <div class="form-grid">
         <div class="field-group">
           <div class="field-label">Nome</div>
-          <input class="field-input" id="p-nome" value="${u.nome||''}" disabled>
+          <input class="field-input" id="p-nome" value="${u.nome||''}" oninput="scheduleProfileAutosave()">
         </div>
         <div class="field-group">
           <div class="field-label">Cognome</div>
-          <input class="field-input" id="p-cognome" value="${u.cognome||''}" disabled>
+          <input class="field-input" id="p-cognome" value="${u.cognome||''}" oninput="scheduleProfileAutosave()">
         </div>
         <div class="field-group full">
           <div class="field-label">Email</div>
@@ -2683,51 +2684,39 @@ function renderUserProfile(content) {
         </div>
         <div class="field-group">
           <div class="field-label">Telefono</div>
-          <input class="field-input" id="p-tel" value="${u.telefono||''}" disabled>
+          <input class="field-input" id="p-tel" value="${u.telefono||''}" oninput="scheduleProfileAutosave()">
         </div>
         <div class="field-group">
           <div class="field-label">Codice Fiscale</div>
-          <input class="field-input" id="p-cf" value="${u.codice_fiscale||''}" disabled>
+          <input class="field-input" id="p-cf" value="${u.codice_fiscale||''}" oninput="scheduleProfileAutosave()">
         </div>
         <div class="field-group full">
           <div class="field-label">Indirizzo</div>
-          <input class="field-input" id="p-ind" value="${u.indirizzo||''}" disabled>
+          <input class="field-input" id="p-ind" value="${u.indirizzo||''}" oninput="scheduleProfileAutosave()">
         </div>
         <div class="field-group">
           <div class="field-label">Data di Nascita</div>
-          <input class="field-input" type="date" id="p-dn" value="${u.data_nascita||''}" disabled>
+          <input class="field-input" type="date" id="p-dn" value="${u.data_nascita ? u.data_nascita.substring(0,10) : ''}" oninput="scheduleProfileAutosave()">
         </div>
         <div class="field-group full">
           <div class="field-label">IBAN</div>
-          <input class="field-input" id="p-iban" value="${u.iban||''}" placeholder="IT00 X000 0000 0000 0000000000" disabled>
+          <input class="field-input" id="p-iban" value="${u.iban||''}" placeholder="IT00 X000 0000 0000 0000000000" oninput="scheduleProfileAutosave()">
         </div>
-      </div>
-      <div class="btn-row">
-        <button class="btn-sm btn-primary" id="btn-edit-profile" onclick="enableProfileEdit()">✏️ Modifica</button>
-        <button class="btn-sm btn-secondary" id="btn-save-profile" onclick="saveProfile()" style="display:none">💾 Salva</button>
-        <button class="btn-sm btn-secondary" id="btn-cancel-profile" onclick="renderUserProfile(document.getElementById('content'))" style="display:none">Annulla</button>
-      </div>
-    </div>
-
-    <div class="card" style="margin-top:16px">
-      <div class="card-title">🪪 Matricola ASC</div>
-      <div id="matricola-error" class="error-banner"></div>
-      <div class="form-grid">
-        <div class="field-group full">
+        <div class="field-group">
           <div class="field-label">Nr. Matricola</div>
-          <input class="field-input" id="p-matricola" value="${u.nr_matricola||''}" placeholder="Es. ASC-2024-001">
+          <input class="field-input" id="p-matricola" value="${u.nr_matricola||''}" placeholder="Es. ASC-2024-001" oninput="scheduleProfileAutosave()">
         </div>
         <div class="field-group">
           <div class="field-label">Data Rilasciata</div>
-          <input class="field-input" type="date" id="p-mat-rilasciata" value="${u.matricola_rilasciata ? u.matricola_rilasciata.substring(0,10) : ''}">
+          <input class="field-input" type="date" id="p-mat-rilasciata" value="${u.matricola_rilasciata ? u.matricola_rilasciata.substring(0,10) : ''}" oninput="scheduleProfileAutosave()">
         </div>
         <div class="field-group">
           <div class="field-label">Data Scadenza</div>
-          <input class="field-input" type="date" id="p-mat-scadenza" value="${u.matricola_scadenza ? u.matricola_scadenza.substring(0,10) : ''}">
+          <input class="field-input" type="date" id="p-mat-scadenza" value="${u.matricola_scadenza ? u.matricola_scadenza.substring(0,10) : ''}" oninput="scheduleProfileAutosave()">
         </div>
       </div>
-      <div class="btn-row">
-        <button class="btn-sm btn-primary" onclick="saveMatricola()">${u.nr_matricola ? '🔄 Aggiorna' : '💾 Salva'} Matricola</button>
+      <div class="btn-row" style="margin-top:20px">
+        <button class="btn-sm btn-primary" id="btn-save-profile" onclick="saveProfile(true)">💾 Salva</button>
       </div>
     </div>
 
@@ -2754,36 +2743,42 @@ function renderUserProfile(content) {
   `;
 }
 
-function enableProfileEdit() {
-  ['p-nome','p-cognome','p-tel','p-cf','p-ind','p-dn','p-iban'].forEach(id=>{
-    const el = document.getElementById(id);
-    if(el) el.disabled = false;
-  });
-  document.getElementById('btn-edit-profile').style.display='none';
-  document.getElementById('btn-save-profile').style.display='inline-flex';
-  document.getElementById('btn-cancel-profile').style.display='inline-flex';
+function enableProfileEdit() {} // legacy — non più usata
+
+let _profileAutosaveTimer = null;
+function scheduleProfileAutosave() {
+  const statusEl = document.getElementById('profile-save-status');
+  if(statusEl) { statusEl.style.display='block'; statusEl.style.color='#aaa'; statusEl.textContent='⏳ Modifiche in corso...'; }
+  clearTimeout(_profileAutosaveTimer);
+  _profileAutosaveTimer = setTimeout(() => saveProfile(false), 2000);
 }
 
-async function saveProfile() {
-  const nome = document.getElementById('p-nome').value;
-  const cognome = document.getElementById('p-cognome').value;
-  const telefono = document.getElementById('p-tel').value;
-  const codice_fiscale = document.getElementById('p-cf').value;
-  const indirizzo = document.getElementById('p-ind').value;
-  const data_nascita = document.getElementById('p-dn').value;
-  const iban = document.getElementById('p-iban').value;
+async function saveProfile(manual = false) {
+  clearTimeout(_profileAutosaveTimer);
+  const nome          = document.getElementById('p-nome')?.value || '';
+  const cognome       = document.getElementById('p-cognome')?.value || '';
+  const telefono      = document.getElementById('p-tel')?.value || '';
+  const codice_fiscale= document.getElementById('p-cf')?.value || '';
+  const indirizzo     = document.getElementById('p-ind')?.value || '';
+  const data_nascita  = document.getElementById('p-dn')?.value || '';
+  const iban          = document.getElementById('p-iban')?.value || '';
+  const nr_matricola  = document.getElementById('p-matricola')?.value || '';
+  const matricola_rilasciata = document.getElementById('p-mat-rilasciata')?.value || '';
+  const matricola_scadenza   = document.getElementById('p-mat-scadenza')?.value || '';
   try {
     const updated = await apiFetch(`/users/${currentUser.id}`, {
       method:'PUT',
-      body: JSON.stringify({nome, cognome, email: currentUser.email, telefono, indirizzo, data_nascita, codice_fiscale, iban})
+      body: JSON.stringify({ nome, cognome, email: currentUser.email, telefono, indirizzo, data_nascita: data_nascita||null, codice_fiscale, iban: iban||null, nr_matricola: nr_matricola||null, matricola_rilasciata: matricola_rilasciata||null, matricola_scadenza: matricola_scadenza||null })
     });
     currentUser = {...currentUser, ...updated};
-    showToast('Profilo aggiornato ✓');
-    renderUserProfile(document.getElementById('content'));
-    buildUserUI();
-    showUserPage('profile', null);
-    document.querySelectorAll('.nav-item')[1]?.classList.add('active');
-  } catch(e) { showToast('Errore aggiornamento', 'error'); }
+    const statusEl = document.getElementById('profile-save-status');
+    if(statusEl) { statusEl.style.display='block'; statusEl.style.color='#2ecc71'; statusEl.textContent='✓ Salvato'; }
+    if(manual) showToast('Profilo salvato ✓');
+  } catch(e) {
+    const statusEl = document.getElementById('profile-save-status');
+    if(statusEl) { statusEl.style.display='block'; statusEl.style.color='#e74c3c'; statusEl.textContent='✗ Errore salvataggio'; }
+    if(manual) showToast('Errore aggiornamento', 'error');
+  }
 }
 
 // ===== UTILITY MODAL =====

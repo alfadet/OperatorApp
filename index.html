@@ -1528,11 +1528,44 @@ async function submitPasswordReset() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nome, cognome, nuova_password_richiesta: pw })
     });
+    // Suono fruscio via Web Audio API
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const buf = ctx.createBuffer(1, ctx.sampleRate * 0.35, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for(let i = 0; i < data.length; i++) {
+        const t = i / ctx.sampleRate;
+        const env = Math.exp(-t * 9);
+        data[i] = (Math.random() * 2 - 1) * env * 0.4 + Math.sin(2 * Math.PI * 440 * t * (1 - t * 2.5)) * env * 0.3;
+      }
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      src.start();
+    } catch(e) {}
+    // Effetto visivo: overlay verde con checkmark
+    const overlay = document.getElementById('pw-reset-overlay');
+    const inner = overlay.querySelector('div');
+    inner.style.transition = 'all 0.35s ease';
+    inner.style.transform = 'scale(1.04)';
+    inner.style.borderColor = 'rgba(46,204,113,0.7)';
+    inner.style.boxShadow = '0 0 32px rgba(46,204,113,0.35)';
+    setTimeout(() => { inner.style.transform = 'scale(1)'; }, 350);
     okEl.style.display = 'block';
+    okEl.style.animation = 'none';
+    okEl.style.fontSize = '14px';
+    okEl.style.padding = '14px';
+    okEl.style.textAlign = 'center';
+    okEl.innerHTML = '<div style="font-size:2.5rem;margin-bottom:8px">✅</div>Richiesta inviata!<br><span style="font-size:11px;opacity:0.8">Attendi che l\'admin aggiorni la tua password.</span>';
     document.getElementById('pr-nome').disabled = true;
     document.getElementById('pr-cognome').disabled = true;
     document.getElementById('pr-newpw').disabled = true;
-    document.querySelector('#pw-reset-overlay button.btn-gold').disabled = true;
+    const btn = document.querySelector('#pw-reset-overlay button.btn-gold');
+    btn.disabled = true;
+    btn.textContent = '✓ Inviata';
+    btn.style.background = 'rgba(46,204,113,0.3)';
+    btn.style.color = '#2ecc71';
+    btn.style.borderColor = 'rgba(46,204,113,0.5)';
   } catch(e) {
     errEl.textContent = 'Errore invio richiesta. Riprova.';
     errEl.style.display = 'block';

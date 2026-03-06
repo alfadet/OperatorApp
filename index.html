@@ -1658,15 +1658,6 @@ function buildAdminUI() {
     </div>
     <div class="nav-divider"></div>
     <div class="nav-qlinks-label">Accesso Rapido</div>
-    <a class="nav-qlink ql-pec" href="https://login.aruba.it/auth/realms/pec/protocol/openid-connect/auth" target="_blank" rel="noopener">
-      <span class="nav-qlink-icon">✉️</span> PEC
-    </a>
-    <a class="nav-qlink ql-drive" href="https://drive.google.com/drive/folders/1Qjzwq7ngtdT-hmd6pt4oRYf4rV5ZGj__" target="_blank" rel="noopener">
-      <span class="nav-qlink-icon">☁️</span> HUB Drive
-    </a>
-    <a class="nav-qlink ql-trello" href="https://trello.com/b/pPePPnQt/alfa-security" target="_blank" rel="noopener">
-      <span class="nav-qlink-icon">📌</span> Trello
-    </a>
     <a class="nav-qlink ql-quest" href="https://form.jotform.com/212652413395050" target="_blank" rel="noopener">
       <span class="nav-qlink-icon">📨</span> Quest-invioCom
     </a>
@@ -4951,7 +4942,7 @@ function renderAdminPreventivi(content) {
   content.innerHTML = `
     <div class="preventivi-wrap">
       <div class="preventivi-card">
-        <div class="preventivi-hdr">Sistema Professionale Preventivi Alfa Security</div>
+        <div class="preventivi-hdr">Centro Gestionale Alfa Security</div>
         <div class="preventivi-sep"></div>
         <div class="preventivi-sub">Accedi alle applicazioni esterne del sistema operativo Alfa Security</div>
         <div class="preventivi-btns">
@@ -4962,6 +4953,18 @@ function renderAdminPreventivi(content) {
           <a class="btn-ext btn-prev2" href="http://72.62.154.189/" target="_blank" rel="noopener">
             <span class="btn-ext-icon">📅</span>
             <span class="btn-ext-label">Gestione Turni</span>
+          </a>
+          <a class="btn-ext" href="https://login.aruba.it/auth/realms/pec/protocol/openid-connect/auth" target="_blank" rel="noopener" style="background:linear-gradient(135deg,#1a3a6e,#2756b0);border-color:rgba(39,86,176,0.5)">
+            <span class="btn-ext-icon">✉️</span>
+            <span class="btn-ext-label">PEC</span>
+          </a>
+          <a class="btn-ext" href="https://drive.google.com/drive/folders/1Qjzwq7ngtdT-hmd6pt4oRYf4rV5ZGj__" target="_blank" rel="noopener" style="background:linear-gradient(135deg,#1a4a2e,#1e8449);border-color:rgba(30,132,73,0.5)">
+            <span class="btn-ext-icon">☁️</span>
+            <span class="btn-ext-label">HUB Drive</span>
+          </a>
+          <a class="btn-ext" href="https://trello.com/b/pPePPnQt/alfa-security" target="_blank" rel="noopener" style="background:linear-gradient(135deg,#0552a4,#0065bd);border-color:rgba(0,101,189,0.5)">
+            <span class="btn-ext-icon">📌</span>
+            <span class="btn-ext-label">Trello</span>
           </a>
         </div>
       </div>

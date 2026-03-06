@@ -516,6 +516,34 @@ app.patch('/api/users/:id/password', auth, adminOnly, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── TESSERE ASC ───────────────────────────────────────────────────────────────
+app.get('/api/tessere', auth, adminOnly, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM tessere ORDER BY created_at DESC');
+    res.json(r.rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/tessere', auth, adminOnly, async (req, res) => {
+  try {
+    const { user_id } = req.body;
+    if (!user_id) return res.status(400).json({ error: 'user_id mancante' });
+    const id = uuidv4();
+    const r = await pool.query(
+      'INSERT INTO tessere (id, user_id, creata_da, created_at) VALUES ($1,$2,$3,NOW()) RETURNING *',
+      [id, user_id, req.user.id]
+    );
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/tessere/:id', auth, adminOnly, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM tessere WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── RICHIESTE PASSWORD ────────────────────────────────────────────────────────
 // POST /api/password-reset — pubblico, nessuna auth
 app.post('/api/password-reset', async (req, res) => {

@@ -1692,6 +1692,7 @@ function showAdminPage(page, el) {
   else if(page==='admininfo') renderAdminInfo(content);
   else if(page==='adminrules') renderAdminRules(content);
   else if(page==='preventivi') renderAdminPreventivi(content);
+  else if(page==='tessere') renderAdminTessere(content, '');
   else if(page==='reportmese') renderAdminReportMese(content);
   else if(page==='gestioneutenti') renderAdminGestioneUtenti(content, '');
   else renderAdminComms(content);
@@ -4937,6 +4938,258 @@ async function sendMessageToAdmin() {
 
 
 
+// ══ TESSERE ASC ══════════════════════════════════════════════════════════════
+async function renderAdminTessere(content, searchQ) {
+  try {
+    const [tessere, users] = await Promise.all([
+      apiFetch('/tessere'),
+      apiFetch('/users')
+    ]);
+    const q = (searchQ||'').toLowerCase();
+    const usersMap = {};
+    users.forEach(u => { usersMap[u.id] = u; });
+    const filtered = tessere.filter(t => {
+      const u = usersMap[t.user_id] || {};
+      return !q || `${u.nome||''} ${u.cognome||''} ${u.email||''}`.toLowerCase().includes(q);
+    });
+    content.innerHTML = `
+      <div class="card">
+        <div class="card-title">🪪 Tessere ASC Operatori</div>
+        <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:center">
+          <div style="flex:1;min-width:220px;position:relative">
+            <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--gold);font-size:13px;pointer-events:none">🔍</span>
+            <input class="field-input" style="padding-left:32px;width:100%;box-sizing:border-box"
+              placeholder="Cerca per nome, cognome o email..."
+              value="${searchQ||''}"
+              oninput="renderAdminTessere(document.getElementById('content'), this.value)">
+          </div>
+          <button class="btn-primary" style="background:linear-gradient(135deg,#7a5c00,#c9a227);border-color:rgba(201,162,39,0.5);color:#fff700;font-weight:700" onclick="tesseraNewModal()">+ Nuova Tessera</button>
+        </div>
+        ${filtered.length === 0
+          ? '<div style="color:var(--text-muted);font-size:13px;padding:20px 0;text-align:center">Nessuna tessera trovata</div>'
+          : `<div style="overflow-x:auto"><table class="gu-table">
+            <thead><tr><th>Operatore</th><th>Matricola</th><th>Creata il</th><th>Azioni</th></tr></thead>
+            <tbody>
+              ${filtered.map(t => {
+                const u = usersMap[t.user_id] || {};
+                return `<tr>
+                  <td><strong>${u.nome||'—'} ${u.cognome||''}</strong><br><span style="font-size:11px;color:var(--text-muted)">${u.email||''}</span></td>
+                  <td style="color:var(--gold);font-weight:600">${u.nr_matricola||'—'}</td>
+                  <td style="font-size:11px;color:var(--text-muted)">${new Date(t.created_at).toLocaleDateString('it-IT')}</td>
+                  <td>
+                    <div class="gu-actions">
+                      <button class="btn-sm btn-secondary" onclick="tesseraView('${t.id}','${t.user_id}')">👁 Visualizza</button>
+                      <button class="btn-sm btn-primary" onclick="tesseraStampa('${t.user_id}')">🖨 Stampa PDF</button>
+                      <button class="btn-sm btn-danger" onclick="tesseraDelete('${t.id}')">🗑</button>
+                    </div>
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table></div>`
+        }
+      </div>`;
+  } catch(e) {
+    content.innerHTML = '<div class="card" style="color:#e74c3c">Errore caricamento tessere</div>';
+  }
+}
+
+async function tesseraNewModal() {
+  try {
+    const users = await apiFetch('/users');
+    openModal(`
+      <div class="modal-title">
+        <span>🪪 Nuova Tessera ASC</span>
+        <span class="modal-close" onclick="closeModalDirect()">✕</span>
+      </div>
+      <div class="field-group" style="margin-bottom:20px">
+        <div class="field-label">Seleziona Operatore</div>
+        <select class="field-input" id="tessera-user-sel" style="width:100%">
+          <option value="">— Seleziona —</option>
+          ${users.map(u => `<option value="${u.id}">${u.nome||''} ${u.cognome||''} (${u.email})</option>`).join('')}
+        </select>
+      </div>
+      <div id="tessera-new-err" style="display:none;color:#e74c3c;font-size:12px;margin-bottom:12px"></div>
+      <div class="btn-row">
+        <button class="btn-sm btn-primary" onclick="tesseraCreate()">✅ Crea Tessera</button>
+        <button class="btn-sm btn-secondary" onclick="closeModalDirect()">Annulla</button>
+      </div>
+    `);
+  } catch(e) { showToast('Errore', 'error'); }
+}
+
+async function tesseraCreate() {
+  const userId = document.getElementById('tessera-user-sel').value;
+  const errEl = document.getElementById('tessera-new-err');
+  if(!userId) { errEl.textContent='Seleziona un operatore.'; errEl.style.display='block'; return; }
+  try {
+    await apiFetch('/tessere', { method:'POST', body: JSON.stringify({ user_id: userId }) });
+    closeModalDirect();
+    showToast('Tessera creata ✓');
+    renderAdminTessere(document.getElementById('content'), '');
+  } catch(e) { errEl.textContent='Errore creazione tessera.'; errEl.style.display='block'; }
+}
+
+async function tesseraDelete(id) {
+  if(!confirm('Eliminare questa tessera?')) return;
+  try {
+    await apiFetch(`/tessere/${id}`, { method:'DELETE' });
+    showToast('Tessera eliminata');
+    renderAdminTessere(document.getElementById('content'), '');
+  } catch(e) { showToast('Errore', 'error'); }
+}
+
+async function tesseraView(tesseraId, userId) {
+  try {
+    const [user, docs] = await Promise.all([
+      apiFetch(`/users/${userId}`),
+      apiFetch(`/documents/${userId}`)
+    ]);
+    const fotoData = docs.foto_selfie ? docs.foto_selfie.data : null;
+    const fotoMime = docs.foto_selfie ? docs.foto_selfie.mime_type : null;
+    const htmlFronte = buildTesseraHtml(user, fotoData, fotoMime, 'fronte');
+    const htmlRetro  = buildTesseraHtml(user, fotoData, fotoMime, 'retro');
+    openModal(`
+      <div class="modal-title">
+        <span>🪪 Tessera — ${user.nome||''} ${user.cognome||''}</span>
+        <span class="modal-close" onclick="closeModalDirect()">✕</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:16px;margin-bottom:20px">
+        <div style="font-size:11px;color:var(--text-muted);text-align:center;margin-bottom:4px">FRONTE</div>
+        ${htmlFronte}
+        <div style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:8px">RETRO</div>
+        ${htmlRetro}
+      </div>
+      <div class="btn-row">
+        <button class="btn-sm btn-primary" onclick="tesseraStampa('${userId}')">🖨 Scarica PDF</button>
+        <button class="btn-sm btn-secondary" onclick="closeModalDirect()">Chiudi</button>
+      </div>
+    `, true);
+  } catch(e) { showToast('Errore caricamento tessera', 'error'); }
+}
+
+function buildTesseraHtml(user, fotoData, fotoMime, lato) {
+  // Scala: 1mm = 3.2px => 85mm=272px, 54mm=173px
+  const W = 272, H = 173;
+  if(lato === 'fronte') {
+    return `
+    <div style="width:${W}px;height:${H}px;position:relative;border-radius:8px;overflow:hidden;border:1px solid #333;font-family:Arial,sans-serif;background:#1a1a1a;flex-shrink:0">
+      <!-- Header -->
+      <div style="position:absolute;top:0;left:0;right:0;height:32px;background:#000;display:flex;align-items:center;justify-content:center">
+        <span style="color:#FFD700;font-weight:900;font-size:16px;letter-spacing:4px">ALFA SECURITY</span>
+      </div>
+      <!-- Foto -->
+      <div style="position:absolute;top:40px;left:10px;width:64px;height:93px;background:#333;border:1px solid #555;overflow:hidden;display:flex;align-items:center;justify-content:center">
+        ${fotoData ? `<img src="data:${fotoMime};base64,${fotoData}" style="width:100%;height:100%;object-fit:cover">` : '<span style="color:#777;font-size:10px;text-align:center">No foto</span>'}
+      </div>
+      <!-- ASSISTENZA -->
+      <div style="position:absolute;top:60px;left:84px;right:8px;display:flex;align-items:center;justify-content:center">
+        <span style="color:#CC0000;font-weight:900;font-size:22px;letter-spacing:2px;text-shadow:0 0 8px rgba(204,0,0,0.5)">ASSISTENZA</span>
+      </div>
+      <!-- Sottotitolo -->
+      <div style="position:absolute;bottom:10px;left:10px;right:10px;text-align:center">
+        <span style="color:#888;font-size:8px;letter-spacing:1px">TESSERA DI RICONOSCIMENTO ASC</span>
+      </div>
+    </div>`;
+  } else {
+    const fmt = v => v ? v.substring(0,10).split('-').reverse().join('/') : '—';
+    return `
+    <div style="width:${W}px;height:${H}px;position:relative;border-radius:8px;overflow:hidden;border:1px solid #333;font-family:Arial,sans-serif;background:#1a1a1a;flex-shrink:0">
+      <!-- Header -->
+      <div style="position:absolute;top:0;left:0;right:0;height:32px;background:#000;display:flex;align-items:center;justify-content:center">
+        <span style="color:#FFD700;font-weight:900;font-size:16px;letter-spacing:4px">ALFA SECURITY</span>
+      </div>
+      <!-- Contenuto -->
+      <div style="position:absolute;top:36px;left:12px;right:12px;color:#ddd;font-size:11px;line-height:1.9">
+        <div><span style="color:#aaa">Nome:</span> <strong style="color:#fff;font-size:12px">${user.nome||'—'} ${user.cognome||''}</strong></div>
+        <div><span style="color:#aaa">Data di nascita:</span> <span>${fmt(user.data_nascita)}</span></div>
+        <div style="margin-top:4px"><span style="color:#aaa">Nr. Matricola:</span> <strong style="color:#FFD700;font-size:13px">${user.nr_matricola||'—'}</strong></div>
+        <div><span style="color:#aaa">Rilasciata:</span> <strong>${fmt(user.matricola_rilasciata)}</strong></div>
+        <div><span style="color:#aaa">Scadenza:</span> <strong style="color:#e74c3c">${fmt(user.matricola_scadenza)}</strong></div>
+      </div>
+      <!-- Footer -->
+      <div style="position:absolute;bottom:0;left:0;right:0;height:22px;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center">
+        <span style="color:#888;font-size:7.5px;letter-spacing:0.5px">Alfa Security • Via Roma 35 • Tel 0461-421049 • Amm. Unico: Loss Tiziano</span>
+      </div>
+    </div>`;
+  }
+}
+
+async function tesseraStampa(userId) {
+  try {
+    const [user, docs] = await Promise.all([
+      apiFetch(`/users/${userId}`),
+      apiFetch(`/documents/${userId}`)
+    ]);
+    const fotoData = docs.foto_selfie ? docs.foto_selfie.data : null;
+    const fotoMime = docs.foto_selfie ? docs.foto_selfie.mime_type : 'image/jpeg';
+    const { jsPDF } = window.jspdf;
+    const W = 85, H = 54;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [W, H] });
+    const fmt = v => v ? v.substring(0,10).split('-').reverse().join('/') : '—';
+
+    // ── FRONTE ──
+    doc.setFillColor(0,0,0);
+    doc.rect(0, 0, W, 10, 'F');
+    doc.setTextColor(255, 215, 0);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(10);
+    doc.text('ALFA SECURITY', W/2, 7, { align:'center' });
+
+    if(fotoData) {
+      try { doc.addImage(`data:${fotoMime};base64,${fotoData}`, fotoMime.includes('png')?'PNG':'JPEG', 3, 12, 19, 30); } catch(e) {}
+    } else {
+      doc.setFillColor(60,60,60);
+      doc.rect(3, 12, 19, 30, 'F');
+      doc.setTextColor(140,140,140); doc.setFontSize(6); doc.setFont('helvetica','normal');
+      doc.text('No foto', 12.5, 29, {align:'center'});
+    }
+
+    doc.setTextColor(180,0,0);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(16);
+    doc.text('ASSISTENZA', 56, 35, { align:'center' });
+
+    doc.setTextColor(120,120,120);
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(5);
+    doc.text('TESSERA DI RICONOSCIMENTO ASC', W/2, 51, { align:'center' });
+
+    // ── RETRO ──
+    doc.addPage();
+    doc.setFillColor(0,0,0);
+    doc.rect(0, 0, W, 10, 'F');
+    doc.setTextColor(255, 215, 0);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(10);
+    doc.text('ALFA SECURITY', W/2, 7, { align:'center' });
+
+    let y = 15;
+    doc.setTextColor(200,200,200); doc.setFont('helvetica','bold'); doc.setFontSize(8);
+    doc.text(`${user.nome||'—'} ${user.cognome||''}`, 5, y); y+=5;
+    doc.setFont('helvetica','normal'); doc.setFontSize(7);
+    doc.setTextColor(160,160,160);
+    doc.text(`Data nascita: `, 5, y);
+    doc.setTextColor(220,220,220); doc.text(fmt(user.data_nascita), 28, y); y+=5;
+
+    doc.setTextColor(255,215,0); doc.setFont('helvetica','bold'); doc.setFontSize(8);
+    doc.text(`Matricola: ${user.nr_matricola||'—'}`, 5, y); y+=5;
+    doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(200,200,200);
+    doc.text(`Rilasciata: ${fmt(user.matricola_rilasciata)}`, 5, y); y+=5;
+    doc.setTextColor(220,80,80);
+    doc.text(`Scadenza: ${fmt(user.matricola_scadenza)}`, 5, y);
+
+    doc.setFillColor(0,0,0);
+    doc.rect(0, H-7, W, 7, 'F');
+    doc.setTextColor(130,130,130); doc.setFont('helvetica','normal'); doc.setFontSize(4.5);
+    doc.text('Alfa Security • Via Roma 35 • Tel 0461-421049 • Amm. Unico: Loss Tiziano', W/2, H-2.5, { align:'center' });
+
+    const nome = `${user.nome||'operatore'}_${user.cognome||''}`.replace(/\s/g,'_');
+    doc.save(`tessera_ASC_${nome}.pdf`);
+    showToast('PDF scaricato ✓');
+  } catch(e) { showToast('Errore generazione PDF', 'error'); }
+}
+
 // ══ PREVENTIVI ══════════════════════════════════════════════════════════════
 function renderAdminPreventivi(content) {
   content.innerHTML = `
@@ -4965,6 +5218,10 @@ function renderAdminPreventivi(content) {
           <a class="btn-ext" href="https://trello.com/b/pPePPnQt/alfa-security" target="_blank" rel="noopener" style="background:linear-gradient(135deg,#0552a4,#0065bd);border-color:rgba(0,101,189,0.5)">
             <span class="btn-ext-icon">📌</span>
             <span class="btn-ext-label">Trello</span>
+          </a>
+          <a class="btn-ext" onclick="showAdminPage('tessere',document.getElementById('nav-preventivi'))" style="cursor:pointer;background:linear-gradient(135deg,#7a5c00,#c9a227);border-color:rgba(201,162,39,0.7)">
+            <span class="btn-ext-icon">🪪</span>
+            <span class="btn-ext-label" style="color:#fff700;font-weight:700">Tessera ASC</span>
           </a>
         </div>
       </div>

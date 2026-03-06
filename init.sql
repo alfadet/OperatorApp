@@ -105,6 +105,13 @@ CREATE TABLE IF NOT EXISTS urgent_messages (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS tessere (
+  id VARCHAR(36) PRIMARY KEY,
+  user_id VARCHAR(36) REFERENCES users(id) ON DELETE CASCADE,
+  creata_da VARCHAR(36),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS richieste_password (
   id VARCHAR(36) PRIMARY KEY,
   user_id VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL,

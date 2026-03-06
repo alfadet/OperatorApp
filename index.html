@@ -5064,8 +5064,8 @@ async function tesseraView(tesseraId, userId) {
 }
 
 function buildTesseraHtml(user, fotoData, fotoMime, lato) {
-  // 95mm x 55mm +30% — scala 5.2px/mm => 494px x 286px
-  const W = 494, H = 286;
+  // larghezza -18% => 405px x 286px
+  const W = 405, H = 286;
   const fmt = v => v ? v.substring(0,10).split('-').reverse().join('/') : '—';
   const hdrH = 57;
   const fotoSrc = fotoData || null;
@@ -5115,7 +5115,7 @@ async function tesseraStampa(userId) {
     ]);
     const fotoDoc = docs.foto_selfie || null;
     const { jsPDF } = window.jspdf;
-    const W = 123.5, H = 71.5;
+    const W = 101.3, H = 71.5;
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [W, H] });
     const fmt = v => v ? v.substring(0,10).split('-').reverse().join('/') : '—';
 
@@ -5156,7 +5156,7 @@ async function tesseraStampa(userId) {
     doc.setTextColor(180, 0, 0);
     doc.setFont('helvetica','bold');
     doc.setFontSize(22);
-    doc.text('ASSISTENZA', 76, 48, { align:'center' });
+    doc.text('ASSISTENZA', 62, 48, { align:'center' });
 
     doc.setTextColor(100, 70, 0);
     doc.setFont('helvetica','bold');

@@ -2008,6 +2008,14 @@ async function moveAdminRule(id, direction) {
   } catch(e) { showToast('Errore riordinamento', 'error'); }
 }
 
+async function adminMarkPwDone(id) {
+  try {
+    await apiFetch(`/password-reset/${id}/complete`, { method:'PATCH' });
+    showToast('Richiesta segnata come completata ✓');
+    renderAdminHome(document.getElementById('content'));
+  } catch(e) { showToast('Errore', 'error'); }
+}
+
 async function adminDeleteIncoming(id) {
   if(!confirm('Eliminare questo messaggio?')) return;
   try {
@@ -2080,12 +2088,18 @@ async function renderAdminHome(content) {
           Gli operatori seguenti hanno richiesto un cambio password. Aggiorna la password dal pannello <strong>Gestione Utenti</strong>.
         </div>
         ${pwPending.map(r => `
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
-            <div>
-              <span style="font-weight:600;color:var(--gold)">${r.nome} ${r.cognome}</span>
-              <span style="font-size:11px;color:var(--text-muted);margin-left:8px">${new Date(r.data_richiesta).toLocaleDateString('it-IT')}</span>
+          <div style="padding:10px 0;border-bottom:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+              <div>
+                <span style="font-weight:600;color:var(--gold)">${r.nome} ${r.cognome}</span>
+                <span style="font-size:11px;color:var(--text-muted);margin-left:8px">${new Date(r.data_richiesta).toLocaleDateString('it-IT')}</span>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <input type="text" value="${r.nuova_password_richiesta}" readonly style="font-size:12px;padding:4px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);width:140px">
+                <button class="btn-sm btn-secondary" style="font-size:11px" onclick="navigator.clipboard.writeText('${r.nuova_password_richiesta}');showToast('Password copiata ✓')">📋 Copia</button>
+                <button class="btn-sm" style="font-size:11px;background:rgba(46,204,113,0.15);color:#2ecc71;border:1px solid rgba(46,204,113,0.3)" onclick="adminMarkPwDone('${r.id}')">✅ Completata</button>
+              </div>
             </div>
-            <span style="font-size:11px;background:rgba(231,76,60,0.15);color:#e74c3c;border:1px solid rgba(231,76,60,0.3);padding:2px 8px;border-radius:8px">In attesa</span>
           </div>`).join('')}
       </div>` : ''}
 
@@ -2833,7 +2847,14 @@ async function renderAdminGestioneUtenti(content, searchQ) {
       apiFetch('/password-reset')
     ]);
     const pwPendingMap = {};
-    pwResets.filter(r => r.stato === 'in_attesa').forEach(r => { pwPendingMap[r.user_id] = r; });
+    pwResets.filter(r => r.stato === 'in_attesa').forEach(r => {
+      if(r.user_id) pwPendingMap[r.user_id] = r;
+    });
+    // Fallback: match per nome+cognome se user_id è null
+    const pwPendingByName = {};
+    pwResets.filter(r => r.stato === 'in_attesa' && !r.user_id).forEach(r => {
+      pwPendingByName[`${r.nome}|${r.cognome}`.toLowerCase()] = r;
+    });
     const q = (searchQ || '').toLowerCase();
     const filtered = q
       ? users.filter(u => `${u.nome||''} ${u.cognome||''} ${u.email}`.toLowerCase().includes(q))
@@ -2874,7 +2895,7 @@ async function renderAdminGestioneUtenti(content, searchQ) {
                   <tr>
                     <td>
                       <strong>${u.nome||'—'} ${u.cognome||''}</strong>
-                      ${pwPendingMap[u.id] ? `<span onclick="guShowPwRequest('${u.id}')" title="Richiesta password in sospeso" style="cursor:pointer;margin-left:6px;font-size:13px;background:rgba(231,76,60,0.2);color:#e74c3c;border:1px solid rgba(231,76,60,0.4);padding:1px 6px;border-radius:6px">🔑 Richiesta pw</span>` : ''}
+                      ${(pwPendingMap[u.id] || pwPendingByName[`${u.nome||''}|${u.cognome||''}`.toLowerCase()]) ? `<span onclick="guShowPwRequest('${u.id}')" title="Richiesta password in sospeso" style="cursor:pointer;margin-left:6px;font-size:13px;background:rgba(231,76,60,0.2);color:#e74c3c;border:1px solid rgba(231,76,60,0.4);padding:1px 6px;border-radius:6px">🔑 Richiesta pw</span>` : ''}
                     </td>
                     <td style="color:var(--text-muted)">${u.email}</td>
                     <td style="color:var(--text-muted);font-size:11px">${fmtDate(u.created_at)}</td>

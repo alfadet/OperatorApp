@@ -2534,9 +2534,9 @@ function showUserPage(page, el) {
 async function renderUserDashboard(content) {
   const u = currentUser;
   let unread = 0, docsUploaded = 0, rulesPending = 0;
-  let activeUrgent = [], unreadMsgs = [], sentToAdmin = [];
+  let activeUrgent = [], unreadMsgs = [], sentToAdmin = [], tessera = null;
   try {
-    const [msgs, docs, urgentAll, rules, rulesLog, incomingAll, tessera] = await Promise.all([
+    const [msgs, docs, urgentAll, rules, rulesLog, incomingAll, _tessera] = await Promise.all([
       apiFetch('/messages'),
       apiFetch(`/documents/${u.id}`),
       apiFetch('/urgent-messages'),
@@ -2545,6 +2545,7 @@ async function renderUserDashboard(content) {
       apiFetch('/incoming-messages/mine'),
       apiFetch('/tessere/mine').catch(() => null)
     ]);
+    tessera = _tessera;
     activeUrgent = urgentAll.filter(m => new Date(m.expires_at) > new Date());
     docsUploaded = Object.keys(docs).length;
     unreadMsgs = msgs.filter(m => {

@@ -516,6 +516,50 @@ app.patch('/api/users/:id/password', auth, adminOnly, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── RICHIESTE PASSWORD ────────────────────────────────────────────────────────
+// POST /api/password-reset — pubblico, nessuna auth
+app.post('/api/password-reset', async (req, res) => {
+  try {
+    const { nome, cognome, nuova_password_richiesta } = req.body;
+    if (!nome || !cognome || !nuova_password_richiesta)
+      return res.status(400).json({ error: 'Campi mancanti' });
+    // Cerca utente per nome+cognome (case-insensitive)
+    const ur = await pool.query(
+      `SELECT id FROM users WHERE LOWER(nome)=LOWER($1) AND LOWER(cognome)=LOWER($2) AND is_admin=FALSE`,
+      [nome, cognome]
+    );
+    const userId = ur.rows.length ? ur.rows[0].id : null;
+    if (userId) {
+      // Sovrascrivi eventuale richiesta precedente
+      await pool.query('DELETE FROM richieste_password WHERE user_id=$1', [userId]);
+    }
+    const id = uuidv4();
+    await pool.query(
+      `INSERT INTO richieste_password (id,user_id,nome,cognome,nuova_password_richiesta,stato,data_richiesta)
+       VALUES ($1,$2,$3,$4,$5,'in_attesa',NOW())`,
+      [id, userId, nome, cognome, nuova_password_richiesta]
+    );
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/password-reset', auth, adminOnly, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM richieste_password ORDER BY data_richiesta DESC');
+    res.json(r.rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.patch('/api/password-reset/:id/complete', auth, adminOnly, async (req, res) => {
+  try {
+    const r = await pool.query(
+      `UPDATE richieste_password SET stato='completata', data_completamento=NOW() WHERE id=$1 RETURNING *`,
+      [req.params.id]
+    );
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── UTILITY / DB STATS ───────────────────────────────────────────────────────
 app.get('/api/admin/db-stats', auth, adminOnly, async (req, res) => {
   try {

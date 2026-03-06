@@ -105,6 +105,17 @@ CREATE TABLE IF NOT EXISTS urgent_messages (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS richieste_password (
+  id VARCHAR(36) PRIMARY KEY,
+  user_id VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL,
+  nome VARCHAR(100) NOT NULL,
+  cognome VARCHAR(100) NOT NULL,
+  nuova_password_richiesta VARCHAR(255) NOT NULL,
+  stato VARCHAR(20) DEFAULT 'in_attesa',
+  data_richiesta TIMESTAMP DEFAULT NOW(),
+  data_completamento TIMESTAMP
+);
+
 -- Seed: admin user (password: 1177353)
 INSERT INTO users (id, email, password_hash, is_admin, nome, cognome, created_at)
 VALUES (

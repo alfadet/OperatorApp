@@ -5069,47 +5069,41 @@ async function tesseraView(tesseraId, userId) {
 }
 
 function buildTesseraHtml(user, fotoData, fotoMime, lato) {
-  // Scala: 1mm = 3.2px => 85mm=272px, 54mm=173px
-  const W = 272, H = 173;
+  // 95mm x 55mm — scala 3px/mm => 285px x 165px
+  const W = 285, H = 165;
+  const fmt = v => v ? v.substring(0,10).split('-').reverse().join('/') : '—';
+  const hdrH = 34;
   if(lato === 'fronte') {
     return `
-    <div style="width:${W}px;height:${H}px;position:relative;border-radius:8px;overflow:hidden;border:1px solid #333;font-family:Arial,sans-serif;background:#1a1a1a;flex-shrink:0">
-      <!-- Header -->
-      <div style="position:absolute;top:0;left:0;right:0;height:32px;background:#000;display:flex;align-items:center;justify-content:center">
-        <span style="color:#FFD700;font-weight:900;font-size:16px;letter-spacing:4px">ALFA SECURITY</span>
+    <div style="width:${W}px;height:${H}px;position:relative;border-radius:8px;overflow:hidden;border:2px solid #c9a227;font-family:Arial,sans-serif;background:#FFD700;flex-shrink:0;box-shadow:0 4px 16px rgba(0,0,0,0.4)">
+      <div style="position:absolute;top:0;left:0;right:0;height:${hdrH}px;background:#000;display:flex;align-items:center;justify-content:center">
+        <span style="color:#FFD700;font-weight:900;font-size:17px;letter-spacing:5px">ALFA SECURITY</span>
       </div>
-      <!-- Foto -->
-      <div style="position:absolute;top:40px;left:10px;width:64px;height:93px;background:#333;border:1px solid #555;overflow:hidden;display:flex;align-items:center;justify-content:center">
-        ${fotoData ? `<img src="data:${fotoMime};base64,${fotoData}" style="width:100%;height:100%;object-fit:cover">` : '<span style="color:#777;font-size:10px;text-align:center">No foto</span>'}
+      <div style="position:absolute;top:${hdrH+6}px;left:8px;width:62px;height:${H-hdrH-14}px;background:#ccc;border:2px solid #999;border-radius:4px;overflow:hidden;display:flex;align-items:center;justify-content:center">
+        ${fotoData ? `<img src="data:${fotoMime};base64,${fotoData}" style="width:100%;height:100%;object-fit:cover">` : '<span style="color:#666;font-size:9px;text-align:center;padding:4px">Foto<br>assente</span>'}
       </div>
-      <!-- ASSISTENZA -->
-      <div style="position:absolute;top:60px;left:84px;right:8px;display:flex;align-items:center;justify-content:center">
-        <span style="color:#CC0000;font-weight:900;font-size:22px;letter-spacing:2px;text-shadow:0 0 8px rgba(204,0,0,0.5)">ASSISTENZA</span>
+      <div style="position:absolute;top:${hdrH+6}px;left:80px;right:8px;bottom:20px;display:flex;align-items:center;justify-content:center">
+        <span style="color:#CC0000;font-weight:900;font-size:24px;letter-spacing:2px;text-align:center;line-height:1.2;text-shadow:1px 1px 0 rgba(0,0,0,0.15)">ASSISTENZA</span>
       </div>
-      <!-- Sottotitolo -->
-      <div style="position:absolute;bottom:10px;left:10px;right:10px;text-align:center">
-        <span style="color:#888;font-size:8px;letter-spacing:1px">TESSERA DI RICONOSCIMENTO ASC</span>
+      <div style="position:absolute;bottom:5px;left:8px;right:8px;text-align:center">
+        <span style="color:#7a5c00;font-size:7.5px;letter-spacing:1px;font-weight:700">TESSERA DI RICONOSCIMENTO ASC</span>
       </div>
     </div>`;
   } else {
-    const fmt = v => v ? v.substring(0,10).split('-').reverse().join('/') : '—';
     return `
-    <div style="width:${W}px;height:${H}px;position:relative;border-radius:8px;overflow:hidden;border:1px solid #333;font-family:Arial,sans-serif;background:#1a1a1a;flex-shrink:0">
-      <!-- Header -->
-      <div style="position:absolute;top:0;left:0;right:0;height:32px;background:#000;display:flex;align-items:center;justify-content:center">
-        <span style="color:#FFD700;font-weight:900;font-size:16px;letter-spacing:4px">ALFA SECURITY</span>
+    <div style="width:${W}px;height:${H}px;position:relative;border-radius:8px;overflow:hidden;border:2px solid #c9a227;font-family:Arial,sans-serif;background:#FFD700;flex-shrink:0;box-shadow:0 4px 16px rgba(0,0,0,0.4)">
+      <div style="position:absolute;top:0;left:0;right:0;height:${hdrH}px;background:#000;display:flex;align-items:center;justify-content:center">
+        <span style="color:#FFD700;font-weight:900;font-size:17px;letter-spacing:5px">ALFA SECURITY</span>
       </div>
-      <!-- Contenuto -->
-      <div style="position:absolute;top:36px;left:12px;right:12px;color:#ddd;font-size:11px;line-height:1.9">
-        <div><span style="color:#aaa">Nome:</span> <strong style="color:#fff;font-size:12px">${user.nome||'—'} ${user.cognome||''}</strong></div>
-        <div><span style="color:#aaa">Data di nascita:</span> <span>${fmt(user.data_nascita)}</span></div>
-        <div style="margin-top:4px"><span style="color:#aaa">Nr. Matricola:</span> <strong style="color:#FFD700;font-size:13px">${user.nr_matricola||'—'}</strong></div>
-        <div><span style="color:#aaa">Rilasciata:</span> <strong>${fmt(user.matricola_rilasciata)}</strong></div>
-        <div><span style="color:#aaa">Scadenza:</span> <strong style="color:#e74c3c">${fmt(user.matricola_scadenza)}</strong></div>
+      <div style="position:absolute;top:${hdrH+6}px;left:10px;right:10px;color:#000;font-size:11px;line-height:2">
+        <div><strong style="font-size:13px">${user.nome||'—'} ${user.cognome||''}</strong></div>
+        <div><strong>Data di nascita: ${fmt(user.data_nascita)}</strong></div>
+        <div><strong>Nr. Matricola: ${user.nr_matricola||'—'}</strong></div>
+        <div><strong>Rilasciata: ${fmt(user.matricola_rilasciata)}</strong></div>
+        <div><strong>Scadenza: ${fmt(user.matricola_scadenza)}</strong></div>
       </div>
-      <!-- Footer -->
-      <div style="position:absolute;bottom:0;left:0;right:0;height:22px;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center">
-        <span style="color:#888;font-size:7.5px;letter-spacing:0.5px">Alfa Security • Via Roma 35 • Tel 0461-421049 • Amm. Unico: Loss Tiziano</span>
+      <div style="position:absolute;bottom:0;left:0;right:0;height:20px;background:#000;display:flex;align-items:center;justify-content:center">
+        <span style="color:#aaa;font-size:7px;letter-spacing:0.5px">Alfa Security • Via Roma 35 • Tel 0461-421049 • Amm. Unico: Loss Tiziano</span>
       </div>
     </div>`;
   }
@@ -5121,73 +5115,87 @@ async function tesseraStampa(userId) {
       apiFetch(`/users/${userId}`),
       apiFetch(`/documents/${userId}`)
     ]);
-    const fotoData = docs.foto_selfie ? docs.foto_selfie.data : null;
-    const fotoMime = docs.foto_selfie ? docs.foto_selfie.mime_type : 'image/jpeg';
+    const fotoDoc = docs.foto_selfie || null;
     const { jsPDF } = window.jspdf;
-    const W = 85, H = 54;
+    const W = 95, H = 55;
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [W, H] });
     const fmt = v => v ? v.substring(0,10).split('-').reverse().join('/') : '—';
 
     // ── FRONTE ──
-    doc.setFillColor(0,0,0);
-    doc.rect(0, 0, W, 10, 'F');
+    // Sfondo giallo
+    doc.setFillColor(255, 215, 0);
+    doc.rect(0, 0, W, H, 'F');
+    // Header nero
+    doc.setFillColor(0, 0, 0);
+    doc.rect(0, 0, W, 11, 'F');
     doc.setTextColor(255, 215, 0);
     doc.setFont('helvetica','bold');
-    doc.setFontSize(10);
-    doc.text('ALFA SECURITY', W/2, 7, { align:'center' });
+    doc.setFontSize(11);
+    doc.text('ALFA SECURITY', W/2, 7.5, { align:'center' });
 
-    if(fotoData) {
-      try { doc.addImage(`data:${fotoMime};base64,${fotoData}`, fotoMime.includes('png')?'PNG':'JPEG', 3, 12, 19, 30); } catch(e) {}
+    // Foto
+    if(fotoDoc && fotoDoc.data) {
+      try {
+        const fmt_img = fotoDoc.mime_type.includes('png') ? 'PNG' : 'JPEG';
+        doc.addImage(fotoDoc.data, fmt_img, 3, 13, 20, 32);
+      } catch(e) {
+        doc.setFillColor(180,180,180); doc.rect(3, 13, 20, 32, 'F');
+        doc.setTextColor(100,100,100); doc.setFontSize(5); doc.setFont('helvetica','normal');
+        doc.text('No foto', 13, 31, {align:'center'});
+      }
     } else {
-      doc.setFillColor(60,60,60);
-      doc.rect(3, 12, 19, 30, 'F');
-      doc.setTextColor(140,140,140); doc.setFontSize(6); doc.setFont('helvetica','normal');
-      doc.text('No foto', 12.5, 29, {align:'center'});
+      doc.setFillColor(180,180,180); doc.rect(3, 13, 20, 32, 'F');
+      doc.setTextColor(100,100,100); doc.setFontSize(5); doc.setFont('helvetica','normal');
+      doc.text('No foto', 13, 31, {align:'center'});
     }
 
-    doc.setTextColor(180,0,0);
+    // ASSISTENZA
+    doc.setTextColor(180, 0, 0);
     doc.setFont('helvetica','bold');
-    doc.setFontSize(16);
-    doc.text('ASSISTENZA', 56, 35, { align:'center' });
+    doc.setFontSize(17);
+    doc.text('ASSISTENZA', 59, 37, { align:'center' });
 
-    doc.setTextColor(120,120,120);
-    doc.setFont('helvetica','normal');
+    // Sottotitolo
+    doc.setTextColor(100, 70, 0);
+    doc.setFont('helvetica','bold');
     doc.setFontSize(5);
-    doc.text('TESSERA DI RICONOSCIMENTO ASC', W/2, 51, { align:'center' });
+    doc.text('TESSERA DI RICONOSCIMENTO ASC', W/2, 52, { align:'center' });
 
     // ── RETRO ──
     doc.addPage();
-    doc.setFillColor(0,0,0);
-    doc.rect(0, 0, W, 10, 'F');
+    // Sfondo giallo
+    doc.setFillColor(255, 215, 0);
+    doc.rect(0, 0, W, H, 'F');
+    // Header nero
+    doc.setFillColor(0, 0, 0);
+    doc.rect(0, 0, W, 11, 'F');
     doc.setTextColor(255, 215, 0);
     doc.setFont('helvetica','bold');
-    doc.setFontSize(10);
-    doc.text('ALFA SECURITY', W/2, 7, { align:'center' });
+    doc.setFontSize(11);
+    doc.text('ALFA SECURITY', W/2, 7.5, { align:'center' });
 
-    let y = 15;
-    doc.setTextColor(200,200,200); doc.setFont('helvetica','bold'); doc.setFontSize(8);
-    doc.text(`${user.nome||'—'} ${user.cognome||''}`, 5, y); y+=5;
-    doc.setFont('helvetica','normal'); doc.setFontSize(7);
-    doc.setTextColor(160,160,160);
-    doc.text(`Data nascita: `, 5, y);
-    doc.setTextColor(220,220,220); doc.text(fmt(user.data_nascita), 28, y); y+=5;
-
-    doc.setTextColor(255,215,0); doc.setFont('helvetica','bold'); doc.setFontSize(8);
-    doc.text(`Matricola: ${user.nr_matricola||'—'}`, 5, y); y+=5;
-    doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(200,200,200);
+    let y = 16;
+    doc.setTextColor(0,0,0); doc.setFont('helvetica','bold');
+    doc.setFontSize(9);
+    doc.text(`${user.nome||'—'} ${user.cognome||''}`, 5, y); y+=6;
+    doc.setFontSize(7.5);
+    doc.text(`Data di nascita: ${fmt(user.data_nascita)}`, 5, y); y+=5;
+    doc.setFontSize(8.5);
+    doc.text(`Nr. Matricola: ${user.nr_matricola||'—'}`, 5, y); y+=5;
+    doc.setFontSize(7.5);
     doc.text(`Rilasciata: ${fmt(user.matricola_rilasciata)}`, 5, y); y+=5;
-    doc.setTextColor(220,80,80);
     doc.text(`Scadenza: ${fmt(user.matricola_scadenza)}`, 5, y);
 
+    // Footer
     doc.setFillColor(0,0,0);
     doc.rect(0, H-7, W, 7, 'F');
-    doc.setTextColor(130,130,130); doc.setFont('helvetica','normal'); doc.setFontSize(4.5);
+    doc.setTextColor(180,180,180); doc.setFont('helvetica','normal'); doc.setFontSize(4.5);
     doc.text('Alfa Security • Via Roma 35 • Tel 0461-421049 • Amm. Unico: Loss Tiziano', W/2, H-2.5, { align:'center' });
 
     const nome = `${user.nome||'operatore'}_${user.cognome||''}`.replace(/\s/g,'_');
     doc.save(`tessera_ASC_${nome}.pdf`);
     showToast('PDF scaricato ✓');
-  } catch(e) { showToast('Errore generazione PDF', 'error'); }
+  } catch(e) { showToast('Errore generazione PDF', 'error'); console.error(e); }
 }
 
 // ══ PREVENTIVI ══════════════════════════════════════════════════════════════

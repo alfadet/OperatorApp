@@ -1657,9 +1657,6 @@ function buildAdminUI() {
     <div class="nav-item" onclick="showAdminPage('gestioneutenti',this)" id="nav-gestioneutenti">
       <span class="nav-icon">🔐</span> Gestione Utenti
     </div>
-    <div class="nav-item" onclick="showAdminPage('amministrazione',this)" id="nav-amministrazione" style="background:#c9a227;color:#000;font-weight:700">
-      <span class="nav-icon">💰</span> Amministrazione
-    </div>
     <div class="nav-divider"></div>
     <div class="nav-qlinks-label">Accesso Rapido</div>
     <a class="nav-qlink ql-quest" href="https://form.jotform.com/212652413395050" target="_blank" rel="noopener">
@@ -2098,8 +2095,8 @@ async function renderAdminHome(content) {
           <button class="btn-primary" style="font-size:1.1rem;padding:18px 32px;flex:1;max-width:240px" onclick="showAdminPage('preventivi',document.getElementById('nav-preventivi'))">
             📋 Centro Operativo
           </button>
-          <button class="btn-primary" style="font-size:1.1rem;padding:18px 32px;flex:1;max-width:240px" onclick="showAdminPage('reportmese',document.getElementById('nav-reportmese'))">
-            📊 Report Mese
+          <button style="font-size:1.1rem;padding:18px 32px;flex:1;max-width:240px;background:#1db954;color:#fff;border:none;border-radius:var(--radius);font-weight:700;cursor:pointer;transition:all 0.2s" onmouseover="this.style.filter='brightness(1.15)'" onmouseout="this.style.filter=''" onclick="showAdminPage('amministrazione',null)">
+            💰 Amministrazione
           </button>
           <a href="https://t.me/Alfadetectives_bot" target="_blank" rel="noopener"
             style="display:flex;align-items:center;justify-content:center;gap:10px;font-size:1.1rem;padding:18px 32px;flex:1;max-width:240px;background:linear-gradient(135deg,#1a5276,#2980b9);color:#fff;border:1px solid #3498db;border-radius:var(--radius);text-decoration:none;font-weight:700;transition:all 0.2s;cursor:pointer"
@@ -5470,7 +5467,78 @@ function renderAdminPreventivi(content) {
 
 // ══ AMMINISTRAZIONE ══════════════════════════════════════════════════════════
 let _ammChart1 = null, _ammChart2 = null;
+let _ammDettagliSocieta = [], _ammDettagliCostiVari = [];
 const MESI_NOMI = ['','Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+
+function ammApriDettaglio(tipo) {
+  const lista = tipo === 'societa' ? _ammDettagliSocieta : _ammDettagliCostiVari;
+  const titolo = tipo === 'societa' ? '🏢 Società Varie — Dettaglio Spese' : '📦 Costi Vari — Dettaglio Spese';
+  const modal = document.createElement('div');
+  modal.id = 'amm-modal-dettaglio';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.innerHTML = `
+    <div style="background:var(--bg2);border:1px solid var(--gold);border-radius:14px;padding:24px;width:100%;max-width:500px;max-height:80vh;overflow-y:auto">
+      <div style="font-family:Cinzel,serif;color:var(--gold);font-size:14px;margin-bottom:16px">${titolo}</div>
+      <div id="amm-det-lista" style="margin-bottom:16px"></div>
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <input id="amm-det-desc" class="form-control" placeholder="Descrizione spesa" style="flex:2">
+        <input id="amm-det-imp" type="number" class="form-control" placeholder="€" style="flex:1">
+        <button class="btn-sm btn-primary" onclick="ammDetAggiungi('${tipo}')">+</button>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <div style="font-weight:700;color:var(--gold);margin-right:auto;line-height:36px">Totale: € <span id="amm-det-tot">0</span></div>
+        <button class="btn btn-primary" onclick="ammDetConferma('${tipo}')">Conferma</button>
+        <button class="btn btn-secondary" onclick="document.getElementById('amm-modal-dettaglio').remove()">Annulla</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  ammDetRender(tipo);
+}
+
+function ammDetRender(tipo) {
+  const lista = tipo === 'societa' ? _ammDettagliSocieta : _ammDettagliCostiVari;
+  const el = document.getElementById('amm-det-lista');
+  const totEl = document.getElementById('amm-det-tot');
+  if (!el) return;
+  const tot = lista.reduce((s,v)=>s+(parseFloat(v.importo)||0),0);
+  if (totEl) totEl.textContent = tot.toFixed(2);
+  el.innerHTML = lista.length === 0
+    ? '<div style="color:var(--text-muted);font-size:13px;margin-bottom:8px">Nessuna voce aggiunta.</div>'
+    : lista.map((v,i)=>`
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;background:var(--bg3);padding:8px 10px;border-radius:8px">
+        <span style="flex:1;font-size:13px">${v.descrizione}</span>
+        <span style="font-weight:700;color:var(--gold)">€ ${parseFloat(v.importo).toFixed(2)}</span>
+        <button class="btn-sm" style="background:#8b0000;color:#fff" onclick="ammDetRimuovi('${tipo}',${i})">✕</button>
+      </div>`).join('');
+}
+
+function ammDetAggiungi(tipo) {
+  const desc = document.getElementById('amm-det-desc')?.value.trim();
+  const imp = parseFloat(document.getElementById('amm-det-imp')?.value);
+  if (!desc || !imp) { showToast('Inserisci descrizione e importo','error'); return; }
+  if (tipo === 'societa') _ammDettagliSocieta.push({descrizione:desc, importo:imp});
+  else _ammDettagliCostiVari.push({descrizione:desc, importo:imp});
+  document.getElementById('amm-det-desc').value='';
+  document.getElementById('amm-det-imp').value='';
+  ammDetRender(tipo);
+}
+
+function ammDetRimuovi(tipo, idx) {
+  if (tipo === 'societa') _ammDettagliSocieta.splice(idx,1);
+  else _ammDettagliCostiVari.splice(idx,1);
+  ammDetRender(tipo);
+}
+
+function ammDetConferma(tipo) {
+  const lista = tipo === 'societa' ? _ammDettagliSocieta : _ammDettagliCostiVari;
+  const tot = lista.reduce((s,v)=>s+(parseFloat(v.importo)||0),0);
+  const inputId = tipo === 'societa' ? 'amm-societa' : 'amm-costi-vari';
+  const el = document.getElementById(inputId);
+  if (el) el.value = tot.toFixed(2);
+  document.getElementById('amm-modal-dettaglio')?.remove();
+  ammCalcola();
+}
 
 async function renderAdminAmministrazione(content) {
   const now = new Date();
@@ -5532,11 +5600,17 @@ async function renderAdminAmministrazione(content) {
         </div>
         <div>
           <div class="field-label">🏢 Società Varie (€)</div>
-          <input id="amm-societa" type="number" class="form-control" placeholder="0" oninput="ammCalcola()">
+          <div style="display:flex;gap:6px;align-items:center">
+            <input id="amm-societa" type="number" class="form-control" placeholder="0" readonly style="flex:1;background:var(--bg2)">
+            <button class="btn-sm btn-secondary" onclick="ammApriDettaglio('societa')">+ Dettaglio</button>
+          </div>
         </div>
         <div>
           <div class="field-label">📦 Costi Vari (€)</div>
-          <input id="amm-costi-vari" type="number" class="form-control" placeholder="0" oninput="ammCalcola()">
+          <div style="display:flex;gap:6px;align-items:center">
+            <input id="amm-costi-vari" type="number" class="form-control" placeholder="0" readonly style="flex:1;background:var(--bg2)">
+            <button class="btn-sm btn-secondary" onclick="ammApriDettaglio('costi-vari')">+ Dettaglio</button>
+          </div>
         </div>
       </div>
 
@@ -5576,7 +5650,9 @@ function ammGetInputs() {
     costo_paghe_op: g('amm-paghe-op'), costo_paghe_op_b: g('amm-paghe-op-b'),
     costo_tax: g('amm-tax'), costo_amm_paghe: g('amm-amm-paghe'),
     costo_manager_security: g('amm-manager'), costo_vestiario: g('amm-vestiario'),
-    costo_societa_varie: g('amm-societa'), costi_vari: g('amm-costi-vari')
+    costo_societa_varie: g('amm-societa'), costi_vari: g('amm-costi-vari'),
+    societa_varie_dettaglio: JSON.stringify(_ammDettagliSocieta),
+    costi_vari_dettaglio: JSON.stringify(_ammDettagliCostiVari)
   };
 }
 
@@ -5624,6 +5700,8 @@ async function ammLoad() {
       const el = document.getElementById(elId);
       if (el) el.value = d ? (parseFloat(d[key])||0) : '';
     });
+    _ammDettagliSocieta = d?.societa_varie_dettaglio ? JSON.parse(d.societa_varie_dettaglio) : [];
+    _ammDettagliCostiVari = d?.costi_vari_dettaglio ? JSON.parse(d.costi_vari_dettaglio) : [];
     ammCalcola();
     await ammLoadAnnuale(anno);
   } catch(e) { showToast('Errore caricamento dati','error'); }
@@ -5782,6 +5860,9 @@ async function ammEsportaPDF() {
     ['Vestiario', '€ '+((parseFloat(d.costo_vestiario)||0).toFixed(2))],
     ['Società Varie', '€ '+((parseFloat(d.costo_societa_varie)||0).toFixed(2))],
     ['Costi Vari', '€ '+((parseFloat(d.costi_vari)||0).toFixed(2))],
+    ..._ammDettagliCostiVari.map(v=>['  └ '+v.descrizione, '€ '+parseFloat(v.importo).toFixed(2)]),
+    ..._ammDettagliSocieta.length ? [['Dettaglio Società Varie','']] : [],
+    ..._ammDettagliSocieta.map(v=>['  └ '+v.descrizione, '€ '+parseFloat(v.importo).toFixed(2)]),
     ['Totale Costi', '€ '+c.totCosti.toFixed(2)],
     ['Risultato Finale', '€ '+c.risultato.toFixed(2)],
     ['Margine %', c.margine],

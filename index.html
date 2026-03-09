@@ -4591,7 +4591,7 @@ async function saveNote() {
   const testo = document.getElementById('note-testo').value.trim();
   if (!titolo) { showToast('Inserisci un titolo','error'); return; }
   try {
-    const n = await apiFetch('/notes','POST',{titolo,testo});
+    const n = await apiFetch('/notes', {method:'POST', body:JSON.stringify({titolo,testo})});
     document.getElementById('note-titolo').value='';
     document.getElementById('note-testo').value='';
     const list = document.getElementById('notes-list');
@@ -4605,7 +4605,7 @@ async function updateNote(id) {
   const testo = document.getElementById('note-edit-testo-'+id).value.trim();
   if (!titolo) { showToast('Inserisci un titolo','error'); return; }
   try {
-    const n = await apiFetch('/notes/'+id,'PUT',{titolo,testo});
+    const n = await apiFetch('/notes/'+id, {method:'PUT', body:JSON.stringify({titolo,testo})});
     const card = document.getElementById('note-'+id);
     card.outerHTML = noteCard(n);
     showToast('Nota aggiornata ✓');
@@ -4615,7 +4615,7 @@ async function updateNote(id) {
 async function deleteNote(id) {
   if (!confirm('Eliminare questa nota?')) return;
   try {
-    await apiFetch('/notes/'+id,'DELETE');
+    await apiFetch('/notes/'+id, {method:'DELETE'});
     document.getElementById('note-'+id).remove();
     showToast('Nota eliminata');
     if (!document.getElementById('notes-list').querySelector('.card')) {

@@ -634,6 +634,46 @@ app.get('/api/admin/db-backup', auth, adminOnly, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── NOTE OPERATORE ────────────────────────────────────────────────────────────
+app.get('/api/notes', auth, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM note_operatore WHERE user_id=$1 ORDER BY created_at DESC', [req.user.id]);
+    res.json(r.rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/notes', auth, async (req, res) => {
+  try {
+    const { titolo, testo } = req.body;
+    if (!titolo) return res.status(400).json({ error: 'Titolo mancante' });
+    const id = uuidv4();
+    const r = await pool.query(
+      'INSERT INTO note_operatore (id,user_id,titolo,testo,created_at,updated_at) VALUES ($1,$2,$3,$4,NOW(),NOW()) RETURNING *',
+      [id, req.user.id, titolo, testo || '']
+    );
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/notes/:id', auth, async (req, res) => {
+  try {
+    const { titolo, testo } = req.body;
+    const r = await pool.query(
+      'UPDATE note_operatore SET titolo=$1,testo=$2,updated_at=NOW() WHERE id=$3 AND user_id=$4 RETURNING *',
+      [titolo, testo || '', req.params.id, req.user.id]
+    );
+    if (!r.rows.length) return res.status(404).json({ error: 'Nota non trovata' });
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/notes/:id', auth, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM note_operatore WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── HEALTH ────────────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 

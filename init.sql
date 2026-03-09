@@ -123,6 +123,15 @@ CREATE TABLE IF NOT EXISTS richieste_password (
   data_completamento TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS note_operatore (
+  id VARCHAR(36) PRIMARY KEY,
+  user_id VARCHAR(36) REFERENCES users(id) ON DELETE CASCADE,
+  titolo VARCHAR(255) NOT NULL,
+  testo TEXT DEFAULT '',
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
 -- Seed: admin user (password: 02382450225)
 INSERT INTO users (id, email, password_hash, is_admin, nome, cognome, created_at)
 VALUES (

@@ -2503,6 +2503,7 @@ async function buildUserUI() {
       <span class="nav-icon">📜</span> Accettazione Regole
       ${rulesPending>0?`<span class="nav-badge">${rulesPending}</span>`:''}
     </div>
+    <div class="nav-item" onclick="showUserPage('notes',this)"><span class="nav-icon">📝</span> Note</div>
   `;
   showUserPage('dashboard', sidebar.querySelector('.nav-item'));
 }
@@ -2529,6 +2530,7 @@ function showUserPage(page, el) {
   else if(page==='messages') renderUserMessages(content);
   else if(page==='info') renderUserInfo(content);
   else if(page==='rules') renderUserRules(content);
+  else if(page==='notes') renderUserNotes(content);
 }
 
 async function renderUserDashboard(content) {
@@ -4516,6 +4518,110 @@ async function renderUserInfo(content) {
 function toggleInfoItem(id) {
   const el = document.getElementById('info-item-' + id);
   if (el) el.classList.toggle('open');
+}
+
+// ===== NOTE OPERATORE =====
+async function renderUserNotes(content) {
+  content.innerHTML = '<div class="card"><div class="card-title">📝 Note</div><div style="color:var(--text-muted);font-size:13px">Caricamento...</div></div>';
+  try {
+    const notes = await apiFetch('/notes');
+    content.innerHTML = `
+      <div class="card">
+        <div class="card-title">📝 Note</div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;line-height:1.7">
+          Il tuo spazio personale. Scrivi note e promemoria, modificali o eliminali quando vuoi. Solo tu puoi vederli.
+        </p>
+        <div style="display:flex;gap:10px;margin-bottom:20px">
+          <input id="note-titolo" class="form-control" placeholder="Titolo nota" style="flex:1">
+          <button class="btn btn-primary" onclick="saveNote()">+ Aggiungi</button>
+        </div>
+        <textarea id="note-testo" class="form-control" placeholder="Testo (opzionale)" rows="3" style="margin-bottom:20px;resize:vertical"></textarea>
+        <div id="notes-list">
+          ${notes.length === 0
+            ? '<div class="empty-state"><div class="empty-icon">📝</div>Nessuna nota. Aggiungine una!</div>'
+            : notes.map(n => noteCard(n)).join('')}
+        </div>
+      </div>
+    `;
+  } catch(e) { content.innerHTML = '<div class="empty-state">Errore caricamento note</div>'; }
+}
+
+function noteCard(n) {
+  const data = new Date(n.created_at).toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric'});
+  return `
+    <div class="card" id="note-${n.id}" style="margin-bottom:12px;padding:14px 16px">
+      <div id="note-view-${n.id}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+          <div>
+            <div style="font-weight:700;color:var(--text);margin-bottom:4px">${n.titolo}</div>
+            ${n.testo ? `<div style="font-size:13px;color:var(--text-muted);white-space:pre-wrap">${n.testo}</div>` : ''}
+            <div style="font-size:11px;color:var(--text-muted);margin-top:6px">${data}</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button class="btn-sm btn-secondary" onclick="editNote('${n.id}','${encodeURIComponent(n.titolo)}','${encodeURIComponent(n.testo||'')}')">✏️</button>
+            <button class="btn-sm" style="background:var(--danger,#c0392b);color:#fff" onclick="deleteNote('${n.id}')">🗑</button>
+          </div>
+        </div>
+      </div>
+      <div id="note-edit-${n.id}" style="display:none">
+        <input class="form-control" id="note-edit-titolo-${n.id}" style="margin-bottom:8px" value="${n.titolo}">
+        <textarea class="form-control" id="note-edit-testo-${n.id}" rows="3" style="margin-bottom:8px;resize:vertical">${n.testo||''}</textarea>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-primary" onclick="updateNote('${n.id}')">Salva</button>
+          <button class="btn btn-secondary" onclick="cancelEditNote('${n.id}')">Annulla</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function editNote(id, titolo, testo) {
+  document.getElementById('note-view-'+id).style.display='none';
+  document.getElementById('note-edit-'+id).style.display='block';
+  document.getElementById('note-edit-titolo-'+id).value=decodeURIComponent(titolo);
+  document.getElementById('note-edit-testo-'+id).value=decodeURIComponent(testo);
+}
+
+function cancelEditNote(id) {
+  document.getElementById('note-view-'+id).style.display='block';
+  document.getElementById('note-edit-'+id).style.display='none';
+}
+
+async function saveNote() {
+  const titolo = document.getElementById('note-titolo').value.trim();
+  const testo = document.getElementById('note-testo').value.trim();
+  if (!titolo) { showToast('Inserisci un titolo','error'); return; }
+  try {
+    const n = await apiFetch('/notes','POST',{titolo,testo});
+    document.getElementById('note-titolo').value='';
+    document.getElementById('note-testo').value='';
+    const list = document.getElementById('notes-list');
+    list.innerHTML = noteCard(n) + list.innerHTML.replace('<div class="empty-state">','<div class="empty-state" style="display:none">');
+    showToast('Nota aggiunta ✓');
+  } catch(e) { showToast('Errore salvataggio','error'); }
+}
+
+async function updateNote(id) {
+  const titolo = document.getElementById('note-edit-titolo-'+id).value.trim();
+  const testo = document.getElementById('note-edit-testo-'+id).value.trim();
+  if (!titolo) { showToast('Inserisci un titolo','error'); return; }
+  try {
+    const n = await apiFetch('/notes/'+id,'PUT',{titolo,testo});
+    const card = document.getElementById('note-'+id);
+    card.outerHTML = noteCard(n);
+    showToast('Nota aggiornata ✓');
+  } catch(e) { showToast('Errore aggiornamento','error'); }
+}
+
+async function deleteNote(id) {
+  if (!confirm('Eliminare questa nota?')) return;
+  try {
+    await apiFetch('/notes/'+id,'DELETE');
+    document.getElementById('note-'+id).remove();
+    showToast('Nota eliminata');
+    if (!document.getElementById('notes-list').querySelector('.card')) {
+      document.getElementById('notes-list').innerHTML='<div class="empty-state"><div class="empty-icon">📝</div>Nessuna nota. Aggiungine una!</div>';
+    }
+  } catch(e) { showToast('Errore eliminazione','error'); }
 }
 
 // ===== USER RULES SECTION =====

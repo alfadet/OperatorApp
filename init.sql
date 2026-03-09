@@ -123,12 +123,12 @@ CREATE TABLE IF NOT EXISTS richieste_password (
   data_completamento TIMESTAMP
 );
 
--- Seed: admin user (password: 1177353)
+-- Seed: admin user (password: 02382450225)
 INSERT INTO users (id, email, password_hash, is_admin, nome, cognome, created_at)
 VALUES (
   'admin-001',
   'Alfadetectives@Gmail.com',
-  '$2b$10$.ocqH8fqlGGUEZsc0Na8COGAaQ0Bm8SURu3pG6ZlsBPDdecyfOPd.',
+  '$2b$10$6S5dqHJ/tdNh.q0zZPRS9exDo9DNKYoSPV2ORADPySOQvp40rz9g6',
   TRUE,
   'Admin',
   'AD Security',

@@ -634,6 +634,57 @@ app.get('/api/admin/db-backup', auth, adminOnly, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── AMMINISTRAZIONE MENSILE ───────────────────────────────────────────────────
+app.get('/api/admin/amministrazione', auth, adminOnly, async (req, res) => {
+  try {
+    const { mese, anno } = req.query;
+    if (mese && anno) {
+      const r = await pool.query('SELECT * FROM amministrazione_mensile WHERE mese=$1 AND anno=$2', [mese, anno]);
+      return res.json(r.rows[0] || null);
+    }
+    const r = await pool.query('SELECT * FROM amministrazione_mensile ORDER BY anno, mese');
+    res.json(r.rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/admin/amministrazione/anno/:anno', auth, adminOnly, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM amministrazione_mensile WHERE anno=$1 ORDER BY mese', [req.params.anno]);
+    res.json(r.rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/amministrazione', auth, adminOnly, async (req, res) => {
+  try {
+    const { mese, anno, fatture, nn, numero_servizi_mese, costo_paghe_op, costo_paghe_op_b,
+            costo_tax, costo_amm_paghe, costo_manager_security, costo_vestiario,
+            costo_societa_varie, costi_vari } = req.body;
+    const id = uuidv4();
+    const r = await pool.query(`
+      INSERT INTO amministrazione_mensile
+        (id,mese,anno,fatture,nn,numero_servizi_mese,costo_paghe_op,costo_paghe_op_b,
+         costo_tax,costo_amm_paghe,costo_manager_security,costo_vestiario,costo_societa_varie,costi_vari,created_at,updated_at)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,NOW(),NOW())
+      ON CONFLICT (mese,anno) DO UPDATE SET
+        fatture=$4,nn=$5,numero_servizi_mese=$6,costo_paghe_op=$7,costo_paghe_op_b=$8,
+        costo_tax=$9,costo_amm_paghe=$10,costo_manager_security=$11,costo_vestiario=$12,
+        costo_societa_varie=$13,costi_vari=$14,updated_at=NOW()
+      RETURNING *`,
+      [id,mese,anno,fatture||0,nn||0,numero_servizi_mese||0,costo_paghe_op||0,costo_paghe_op_b||0,
+       costo_tax||0,costo_amm_paghe||0,costo_manager_security||0,costo_vestiario||0,
+       costo_societa_varie||0,costi_vari||0]
+    );
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/admin/amministrazione/all', auth, adminOnly, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM amministrazione_mensile');
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── NOTE OPERATORE ────────────────────────────────────────────────────────────
 app.get('/api/notes', auth, async (req, res) => {
   try {

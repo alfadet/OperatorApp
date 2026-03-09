@@ -123,6 +123,26 @@ CREATE TABLE IF NOT EXISTS richieste_password (
   data_completamento TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS amministrazione_mensile (
+  id VARCHAR(36) PRIMARY KEY,
+  mese INT NOT NULL,
+  anno INT NOT NULL,
+  fatture DECIMAL(12,2) DEFAULT 0,
+  nn DECIMAL(12,2) DEFAULT 0,
+  numero_servizi_mese INT DEFAULT 0,
+  costo_paghe_op DECIMAL(12,2) DEFAULT 0,
+  costo_paghe_op_b DECIMAL(12,2) DEFAULT 0,
+  costo_tax DECIMAL(12,2) DEFAULT 0,
+  costo_amm_paghe DECIMAL(12,2) DEFAULT 0,
+  costo_manager_security DECIMAL(12,2) DEFAULT 0,
+  costo_vestiario DECIMAL(12,2) DEFAULT 0,
+  costo_societa_varie DECIMAL(12,2) DEFAULT 0,
+  costi_vari DECIMAL(12,2) DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(mese, anno)
+);
+
 CREATE TABLE IF NOT EXISTS note_operatore (
   id VARCHAR(36) PRIMARY KEY,
   user_id VARCHAR(36) REFERENCES users(id) ON DELETE CASCADE,

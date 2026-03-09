@@ -16,7 +16,7 @@
 <script src="libs/jspdf.umd.min.js"></script>
 <script src="libs/jspdf.plugin.autotable.min.js"></script>
 <script src="libs/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 <style>
 :root {
   --gold: #c9a227;
@@ -1685,7 +1685,7 @@ function buildAdminUI() {
 
 function showAdminPage(page, el) {
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  el.classList.add('active');
+  if(el) el.classList.add('active');
   const content = document.getElementById('content');
   if(page==='home') renderAdminHome(content);
   else if(page==='users') renderAdminUsers(content,'');

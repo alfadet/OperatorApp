@@ -2502,6 +2502,9 @@ async function buildUserUI() {
     rulesPending = rules.filter(r => !rulesLog.find(l => l.userId === u.id && l.ruleId === r.id)).length;
   } catch(e) {}
   sidebar.innerHTML = `
+    <div style="padding:18px 16px 12px;text-align:center;border-bottom:1px solid rgba(201,162,39,0.15);margin-bottom:6px">
+      <img src="/logo-alfa.png" alt="Alfa Security" class="alfa-logo" style="width:90%;max-width:160px;height:auto;display:block;margin:0 auto">
+    </div>
     <div class="nav-item active" onclick="showUserPage('dashboard',this)"><span class="nav-icon">🏠</span> Dashboard</div>
     <div class="nav-item" onclick="showUserPage('profile',this)"><span class="nav-icon">👤</span> Dati Personali</div>
     <div class="nav-item" onclick="showUserPage('documents',this)"><span class="nav-icon">📁</span> Documenti</div>

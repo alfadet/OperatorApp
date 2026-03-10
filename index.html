@@ -51,6 +51,7 @@ body.theme-light .card                 { background:var(--bg2); box-shadow:0 2px
 body.theme-light .card-title           { border-bottom-color:var(--border); color:var(--gold); }
 body.theme-light .stat-card            { background:linear-gradient(135deg,var(--bg3),var(--bg4)); }
 body.theme-light .field-input          { background:#fff; color:var(--text); border-color:var(--border); }
+body.theme-light .alfa-logo            { filter: brightness(0); }
 body.theme-light .nav-item             { color:var(--text); }
 body.theme-light .nav-item:hover       { background:rgba(154,111,0,.10); }
 body.theme-light .nav-item.active      { background:rgba(154,111,0,.16); color:var(--gold); }
@@ -2544,21 +2545,31 @@ function showUserPage(page, el) {
   else if(page==='notes') renderUserNotes(content);
 }
 
+async function userDismissCA(id) {
+  try {
+    await apiFetch('/cassa-anticipi/'+id+'/notifica-letta', {method:'PATCH'});
+    const el = document.getElementById('ca-notif-'+id);
+    if (el) el.style.transition='opacity .4s', el.style.opacity='0', setTimeout(()=>el.remove(), 400);
+  } catch(e) { showToast('Errore', 'error'); }
+}
+
 async function renderUserDashboard(content) {
   const u = currentUser;
   let unread = 0, docsUploaded = 0, rulesPending = 0;
-  let activeUrgent = [], unreadMsgs = [], sentToAdmin = [], tessera = null;
+  let activeUrgent = [], unreadMsgs = [], sentToAdmin = [], tessera = null, caNotifiche = [];
   try {
-    const [msgs, docs, urgentAll, rules, rulesLog, incomingAll, _tessera] = await Promise.all([
+    const [msgs, docs, urgentAll, rules, rulesLog, incomingAll, _tessera, caAll] = await Promise.all([
       apiFetch('/messages'),
       apiFetch(`/documents/${u.id}`),
       apiFetch('/urgent-messages'),
       apiFetch('/rules'),
       apiFetch('/rules-log'),
       apiFetch('/incoming-messages/mine'),
-      apiFetch('/tessere/mine').catch(() => null)
+      apiFetch('/tessere/mine').catch(() => null),
+      apiFetch('/cassa-anticipi/operatore').catch(() => [])
     ]);
     tessera = _tessera;
+    caNotifiche = (caAll||[]).filter(a => a.notifica_inviata && !a.notifica_letta);
     activeUrgent = urgentAll.filter(m => new Date(m.expires_at) > new Date());
     docsUploaded = Object.keys(docs).length;
     unreadMsgs = msgs.filter(m => {
@@ -2570,6 +2581,8 @@ async function renderUserDashboard(content) {
     sentToAdmin = incomingAll.filter(m => (m.fromUserId||m.from_user_id) === u.id)
     sentToAdmin = incomingAll.slice().sort((a,b) => new Date(b.created_at)-new Date(a.created_at)).slice(0,3);
   } catch(e) {}
+  const fmtCA = ds => ds ? new Date(ds.split('T')[0]+'T00:00:00').toLocaleDateString('it-IT') : '';
+  const fmtAmt = v => '€ '+Number(v).toFixed(2).replace('.',',');
   content.innerHTML = `
     <!-- URGENT MESSAGES — always on top, full width -->
     ${activeUrgent.length > 0 ? `
@@ -2585,6 +2598,24 @@ async function renderUserDashboard(content) {
           <div class="urgent-text">${m.testo}</div>
         </div>`).join('')}
     </div>` : ''}
+
+    <!-- CASSA ANTICIPI NOTIFICHE -->
+    ${caNotifiche.map(a=>`
+    <div id="ca-notif-${a.id}" style="background:linear-gradient(135deg,rgba(245,158,11,0.12),rgba(201,162,39,0.06));border:1px solid rgba(245,158,11,0.5);border-left:5px solid #f59e0b;border-radius:10px;padding:16px 20px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <div style="font-size:26px;flex-shrink:0">💼</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-family:'Cinzel',serif;font-size:13px;color:#f59e0b;font-weight:700;letter-spacing:1px;margin-bottom:4px">Anticipo Spesa — Notifica Admin</div>
+        <div style="font-size:13px;color:var(--text);line-height:1.5">
+          <strong>${a.categoria}${a.descrizione_varie?' — '+a.descrizione_varie:''}</strong> del ${fmtCA(a.data_spesa)}<br>
+          Importo anticipato: <strong style="color:#f59e0b">${fmtAmt(a.importo_totale)}</strong>
+          ${a.importo_rimborsato>0?` &nbsp;|&nbsp; Rimborsato: <strong style="color:#10b981">${fmtAmt(a.importo_rimborsato)}</strong>`:''}
+          ${a.note_admin?`<br><span style="color:var(--text-muted);font-size:12px">Note: ${a.note_admin}</span>`:''}
+        </div>
+      </div>
+      <button onclick="userDismissCA('${a.id}')" style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);border-radius:8px;color:#f59e0b;cursor:pointer;padding:8px 16px;font-weight:700;font-size:12px;white-space:nowrap;flex-shrink:0" onmouseover="this.style.background='rgba(245,158,11,0.28)'" onmouseout="this.style.background='rgba(245,158,11,0.15)'">
+        Ho letto ✓
+      </button>
+    </div>`).join('')}
 
     ${rulesPending>0 ? `
     <div style="background:linear-gradient(135deg,rgba(231,76,60,0.12),rgba(192,57,43,0.06));
@@ -2603,8 +2634,9 @@ async function renderUserDashboard(content) {
         </div>
       </div>
     </div>` : ''}
-    <div class="card" style="border-color:var(--border-gold);background:linear-gradient(135deg,var(--bg2),var(--bg3))">
-      <div class="welcome-name">Benvenuto, ${u.nome||u.email.split('@')[0]}</div>
+    <div class="card" style="border-color:var(--border-gold);background:linear-gradient(135deg,var(--bg2),var(--bg3));text-align:center;padding:28px 20px">
+      <img src="/logo-alfa.png" alt="Alfa Security" class="alfa-logo" style="max-width:220px;width:70%;height:auto;margin:0 auto 16px;display:block">
+      <div class="welcome-name" style="margin-top:0">Benvenuto, ${u.nome||u.email.split('@')[0]}</div>
       <div class="welcome-sub">AD Security — Gestione Operatori</div>
     </div>
     <div class="stats-grid">
@@ -5556,6 +5588,7 @@ function ammDetConferma(tipo) {
   if (el) el.value = tot.toFixed(2);
   document.getElementById('amm-modal-dettaglio')?.remove();
   ammCalcola();
+  ammSalva();
 }
 
 async function renderAdminAmministrazione(content) {
@@ -5945,7 +5978,7 @@ async function ammEsportaPDF() {
     ['TOTALE COSTI',fmt(c.totCosti)],
   ];
   doc.autoTable({
-    startY:y, head:[['📥 ENTRATE','']],
+    startY:y, head:[['ENTRATE','']],
     body: entrateRows,
     theme:'striped',
     headStyles:{fillColor:[30,80,30],textColor:[255,255,255],fontStyle:'bold'},
@@ -5955,7 +5988,7 @@ async function ammEsportaPDF() {
   });
   y = doc.lastAutoTable.finalY + 6;
   doc.autoTable({
-    startY:y, head:[['📤 COSTI','']],
+    startY:y, head:[['COSTI','']],
     body: costiRows,
     theme:'striped',
     headStyles:{fillColor:[120,30,30],textColor:[255,255,255],fontStyle:'bold'},
@@ -5974,7 +6007,7 @@ async function ammEsportaPDF() {
   const risCol = c.risultato >= 0 ? [30,150,50] : [180,30,30];
   doc.autoTable({
     startY:y,
-    head:[['📊 RISULTATO E KPI','']],
+    head:[['RISULTATO E KPI','']],
     body:[
       ['Risultato Netto', fmt(c.risultato)],
       ['Margine %', c.margine],

@@ -726,6 +726,90 @@ app.delete('/api/notes/:id', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── CASSA ANTICIPI ────────────────────────────────────────────────────────────
+const CA_SEL = `
+  SELECT ca.*, u.nome as operatore_nome, u.cognome as operatore_cognome,
+    (SELECT COALESCE(JSON_AGG(r ORDER BY r.created_at ASC),'[]'::json)
+     FROM (SELECT id, data_rimborso::text as data, importo::float, nota, created_at FROM ca_rimborsi WHERE anticipo_id=ca.id) r
+    ) as rimborsi,
+    (SELECT COALESCE(JSON_AGG(l ORDER BY l.timestamp ASC),'[]'::json)
+     FROM (SELECT id, timestamp, azione, dettaglio FROM ca_log WHERE anticipo_id=ca.id) l
+    ) as log
+  FROM cassa_anticipi ca JOIN users u ON ca.operatore_id=u.id`;
+
+app.get('/api/cassa-anticipi', auth, adminOnly, async (req, res) => {
+  try { const r=await pool.query(CA_SEL+' ORDER BY ca.created_at DESC'); res.json(r.rows); }
+  catch(e){ res.status(500).json({error:e.message}); }
+});
+
+app.get('/api/cassa-anticipi/operatore', auth, async (req, res) => {
+  try { const r=await pool.query(CA_SEL+' WHERE ca.operatore_id=$1 ORDER BY ca.created_at DESC',[req.user.id]); res.json(r.rows); }
+  catch(e){ res.status(500).json({error:e.message}); }
+});
+
+app.post('/api/cassa-anticipi', auth, adminOnly, async (req, res) => {
+  try {
+    const {operatore_id,categoria,descrizione_varie,data_spesa,importo_totale,note_admin}=req.body;
+    if(!operatore_id||!categoria||!data_spesa||!importo_totale) return res.status(400).json({error:'Campi obbligatori mancanti'});
+    const id=uuidv4(), logId=uuidv4();
+    await pool.query('INSERT INTO cassa_anticipi (id,operatore_id,categoria,descrizione_varie,data_spesa,importo_totale,note_admin,notifica_inviata) VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE)',
+      [id,operatore_id,categoria,descrizione_varie||null,data_spesa,importo_totale,note_admin||'']);
+    await pool.query('INSERT INTO ca_log (id,anticipo_id,timestamp,azione,dettaglio) VALUES ($1,$2,NOW(),$3,$4)',
+      [logId,id,'Creazione',"Registrata dall'admin"]);
+    const r=await pool.query(CA_SEL+' WHERE ca.id=$1',[id]);
+    res.json(r.rows[0]);
+  } catch(e){ res.status(500).json({error:e.message}); }
+});
+
+app.put('/api/cassa-anticipi/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const {operatore_id,categoria,descrizione_varie,data_spesa,importo_totale,note_admin}=req.body;
+    await pool.query('UPDATE cassa_anticipi SET operatore_id=$1,categoria=$2,descrizione_varie=$3,data_spesa=$4,importo_totale=$5,note_admin=$6,notifica_inviata=TRUE,notifica_letta=FALSE,updated_at=NOW() WHERE id=$7',
+      [operatore_id,categoria,descrizione_varie||null,data_spesa,importo_totale,note_admin||'',req.params.id]);
+    await pool.query('INSERT INTO ca_log (id,anticipo_id,timestamp,azione,dettaglio) VALUES ($1,$2,NOW(),$3,$4)',
+      [uuidv4(),req.params.id,'Modifica',"Dati aggiornati dall'admin"]);
+    const r=await pool.query(CA_SEL+' WHERE ca.id=$1',[req.params.id]);
+    res.json(r.rows[0]);
+  } catch(e){ res.status(500).json({error:e.message}); }
+});
+
+app.post('/api/cassa-anticipi/:id/rimborso', auth, adminOnly, async (req, res) => {
+  try {
+    const {data_rimborso,importo,nota}=req.body;
+    if(!data_rimborso||!importo) return res.status(400).json({error:'Dati mancanti'});
+    const ca=await pool.query('SELECT importo_totale,importo_rimborsato FROM cassa_anticipi WHERE id=$1',[req.params.id]);
+    if(!ca.rows.length) return res.status(404).json({error:'Non trovato'});
+    const residuo=parseFloat(ca.rows[0].importo_totale)-parseFloat(ca.rows[0].importo_rimborsato);
+    if(parseFloat(importo)>residuo+0.01) return res.status(400).json({error:'Importo supera il residuo'});
+    await pool.query('INSERT INTO ca_rimborsi (id,anticipo_id,data_rimborso,importo,nota) VALUES ($1,$2,$3,$4,$5)',
+      [uuidv4(),req.params.id,data_rimborso,importo,nota||'']);
+    await pool.query('UPDATE cassa_anticipi SET importo_rimborsato=importo_rimborsato+$1,updated_at=NOW() WHERE id=$2',[importo,req.params.id]);
+    const det=`${_fmtAmt(parseFloat(importo))}${nota?' — '+nota:''}`;
+    await pool.query('INSERT INTO ca_log (id,anticipo_id,timestamp,azione,dettaglio) VALUES ($1,$2,NOW(),$3,$4)',
+      [uuidv4(),req.params.id,'Rimborso registrato',det]);
+    const r=await pool.query(CA_SEL+' WHERE ca.id=$1',[req.params.id]);
+    res.json(r.rows[0]);
+  } catch(e){ res.status(500).json({error:e.message}); }
+});
+
+app.patch('/api/cassa-anticipi/:id/notifica-letta', auth, async (req, res) => {
+  try {
+    await pool.query('UPDATE cassa_anticipi SET notifica_letta=TRUE,notifica_letta_il=NOW() WHERE id=$1',[req.params.id]);
+    const now=new Date();
+    const det=`Letta il ${now.toLocaleDateString('it-IT')} ${now.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})}`;
+    await pool.query('INSERT INTO ca_log (id,anticipo_id,timestamp,azione,dettaglio) VALUES ($1,$2,NOW(),$3,$4)',
+      [uuidv4(),req.params.id,"Notifica letta dall'operatore",det]);
+    res.json({ok:true});
+  } catch(e){ res.status(500).json({error:e.message}); }
+});
+
+app.delete('/api/cassa-anticipi/:id', auth, adminOnly, async (req, res) => {
+  try { await pool.query('DELETE FROM cassa_anticipi WHERE id=$1',[req.params.id]); res.json({ok:true}); }
+  catch(e){ res.status(500).json({error:e.message}); }
+});
+
+function _fmtAmt(n){return '€'+n.toFixed(2).replace('.',',');}
+
 // ── HEALTH ────────────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 

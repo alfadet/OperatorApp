@@ -181,3 +181,37 @@ INSERT INTO rules (id, title, text) VALUES
   ('rule-004', 'Riservatezza', 'L''operatore si impegna a mantenere la riservatezza su tutte le informazioni relative ai clienti.'),
   ('rule-005', 'Uso Divisa e Tesserino', 'L''uso improprio della divisa o del tesserino aziendale è causa di immediata sospensione.')
 ON CONFLICT (id) DO NOTHING;
+
+-- Cassa Anticipi
+CREATE TABLE IF NOT EXISTS cassa_anticipi (
+  id VARCHAR(36) PRIMARY KEY,
+  operatore_id VARCHAR(36) REFERENCES users(id) ON DELETE CASCADE,
+  categoria VARCHAR(100) NOT NULL,
+  descrizione_varie VARCHAR(255),
+  data_spesa DATE NOT NULL,
+  importo_totale DECIMAL(10,2) NOT NULL,
+  importo_rimborsato DECIMAL(10,2) DEFAULT 0,
+  note_admin TEXT DEFAULT '',
+  notifica_inviata BOOLEAN DEFAULT FALSE,
+  notifica_letta BOOLEAN DEFAULT FALSE,
+  notifica_letta_il TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS ca_rimborsi (
+  id VARCHAR(36) PRIMARY KEY,
+  anticipo_id VARCHAR(36) REFERENCES cassa_anticipi(id) ON DELETE CASCADE,
+  data_rimborso DATE NOT NULL,
+  importo DECIMAL(10,2) NOT NULL,
+  nota TEXT DEFAULT '',
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS ca_log (
+  id VARCHAR(36) PRIMARY KEY,
+  anticipo_id VARCHAR(36) REFERENCES cassa_anticipi(id) ON DELETE CASCADE,
+  timestamp TIMESTAMP DEFAULT NOW(),
+  azione VARCHAR(100) NOT NULL,
+  dettaglio TEXT DEFAULT ''
+);

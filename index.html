@@ -5483,8 +5483,9 @@ function renderAdminPreventivi(content) {
 }
 
 // ══ AMMINISTRAZIONE ══════════════════════════════════════════════════════════
-let _ammChart1 = null, _ammChart2 = null;
+let _ammChart1 = null, _ammChart2 = null, _ammChart3 = null;
 let _ammDettagliSocieta = [], _ammDettagliCostiVari = [];
+let _ammMeseHasDati = false;
 const MESI_NOMI = ['','Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
 
 function ammApriDettaglio(tipo) {
@@ -5492,19 +5493,19 @@ function ammApriDettaglio(tipo) {
   const titolo = tipo === 'societa' ? '🏢 Società Varie — Dettaglio Spese' : '📦 Costi Vari — Dettaglio Spese';
   const modal = document.createElement('div');
   modal.id = 'amm-modal-dettaglio';
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
   modal.innerHTML = `
-    <div style="background:var(--bg2);border:1px solid var(--gold);border-radius:14px;padding:24px;width:100%;max-width:500px;max-height:80vh;overflow-y:auto">
-      <div style="font-family:Cinzel,serif;color:var(--gold);font-size:14px;margin-bottom:16px">${titolo}</div>
-      <div id="amm-det-lista" style="margin-bottom:16px"></div>
-      <div style="display:flex;gap:8px;margin-bottom:16px">
-        <input id="amm-det-desc" class="form-control" placeholder="Descrizione spesa" style="flex:2">
-        <input id="amm-det-imp" type="number" class="form-control" placeholder="€" style="flex:1">
-        <button class="btn-sm btn-primary" onclick="ammDetAggiungi('${tipo}')">+</button>
+    <div style="background:var(--bg2);border:1px solid var(--gold);border-radius:16px;padding:28px;width:100%;max-width:520px;max-height:82vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.5)">
+      <div style="font-family:Cinzel,serif;color:var(--gold);font-size:15px;margin-bottom:20px;border-bottom:1px solid rgba(201,162,39,0.2);padding-bottom:12px">${titolo}</div>
+      <div id="amm-det-lista" style="margin-bottom:18px"></div>
+      <div style="display:flex;gap:10px;margin-bottom:18px">
+        <input id="amm-det-desc" class="amm-inp" placeholder="Descrizione voce" style="flex:2">
+        <input id="amm-det-imp" type="number" class="amm-inp" placeholder="€" style="flex:1;min-width:80px">
+        <button class="btn btn-primary" style="padding:0 18px;height:44px" onclick="ammDetAggiungi('${tipo}')">+</button>
       </div>
-      <div style="display:flex;gap:10px;justify-content:flex-end">
-        <div style="font-weight:700;color:var(--gold);margin-right:auto;line-height:36px">Totale: € <span id="amm-det-tot">0</span></div>
-        <button class="btn btn-primary" onclick="ammDetConferma('${tipo}')">Conferma</button>
+      <div style="display:flex;gap:10px;justify-content:flex-end;align-items:center">
+        <div style="font-weight:700;color:var(--gold);margin-right:auto">Totale: <span id="amm-det-tot" style="font-size:16px">€ 0,00</span></div>
+        <button class="btn btn-primary" onclick="ammDetConferma('${tipo}')">✓ Conferma</button>
         <button class="btn btn-secondary" onclick="document.getElementById('amm-modal-dettaglio').remove()">Annulla</button>
       </div>
     </div>
@@ -5519,14 +5520,14 @@ function ammDetRender(tipo) {
   const totEl = document.getElementById('amm-det-tot');
   if (!el) return;
   const tot = lista.reduce((s,v)=>s+(parseFloat(v.importo)||0),0);
-  if (totEl) totEl.textContent = tot.toFixed(2);
+  if (totEl) totEl.textContent = '€ '+tot.toFixed(2).replace('.',',');
   el.innerHTML = lista.length === 0
-    ? '<div style="color:var(--text-muted);font-size:13px;margin-bottom:8px">Nessuna voce aggiunta.</div>'
+    ? '<div style="color:var(--text-muted);font-size:13px;margin-bottom:12px;text-align:center;padding:16px;background:var(--bg3);border-radius:8px">Nessuna voce aggiunta.</div>'
     : lista.map((v,i)=>`
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;background:var(--bg3);padding:8px 10px;border-radius:8px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;background:var(--bg3);padding:10px 14px;border-radius:10px;border:1px solid var(--border)">
         <span style="flex:1;font-size:13px">${v.descrizione}</span>
-        <span style="font-weight:700;color:var(--gold)">€ ${parseFloat(v.importo).toFixed(2)}</span>
-        <button class="btn-sm" style="background:#8b0000;color:#fff" onclick="ammDetRimuovi('${tipo}',${i})">✕</button>
+        <span style="font-weight:700;color:var(--gold);font-size:14px">€ ${parseFloat(v.importo).toFixed(2).replace('.',',')}</span>
+        <button class="btn-sm btn-danger" onclick="ammDetRimuovi('${tipo}',${i})">✕</button>
       </div>`).join('');
 }
 
@@ -5562,98 +5563,111 @@ async function renderAdminAmministrazione(content) {
   const mese = now.getMonth() + 1;
   const anno = now.getFullYear();
   content.innerHTML = `
-    <div class="card" style="max-width:820px">
-      <div class="card-title" style="color:#c9a227">💰 Amministrazione Contabilità</div>
+    <style>
+      .amm-card { background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:28px;max-width:900px;margin:0 auto 24px }
+      .amm-inp {
+        width:100%;padding:13px 16px;background:var(--bg3);
+        border:1.5px solid var(--border);border-radius:10px;
+        color:var(--text);font-family:'Exo 2',sans-serif;font-size:14px;
+        outline:none;transition:border-color .2s,box-shadow .2s;
+        box-shadow:0 2px 8px rgba(0,0,0,0.18);box-sizing:border-box;
+      }
+      .amm-inp:focus { border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,162,39,0.15),0 2px 8px rgba(0,0,0,0.18); }
+      .amm-inp[readonly] { opacity:.65;cursor:default; }
+      .amm-inp::placeholder { color:var(--text-muted); }
+      .amm-label { font-size:11px;letter-spacing:1.5px;color:var(--text-muted);text-transform:uppercase;margin-bottom:7px;font-weight:600 }
+      .amm-field { display:flex;flex-direction:column }
+      .amm-section-title { font-family:Cinzel,serif;color:var(--gold);font-size:13px;letter-spacing:2px;text-transform:uppercase;margin:24px 0 16px;padding-bottom:8px;border-bottom:1px solid rgba(201,162,39,0.2) }
+      .amm-kpi { background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:16px 20px;display:flex;flex-direction:column;gap:4px;box-shadow:0 2px 10px rgba(0,0,0,0.15) }
+      .amm-kpi-label { font-size:10px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase }
+      .amm-kpi-val { font-size:20px;font-weight:700 }
+      .amm-mese-badge { display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:1px }
+      .amm-mese-badge.nuovo { background:rgba(39,174,96,0.12);border:1px solid rgba(39,174,96,0.35);color:#2ecc71 }
+      .amm-mese-badge.saved { background:rgba(201,162,39,0.12);border:1px solid rgba(201,162,39,0.35);color:var(--gold) }
+    </style>
+    <div style="padding:20px 24px">
+    <div class="amm-card">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;flex-wrap:wrap">
+        <div style="width:46px;height:46px;border-radius:12px;background:rgba(201,162,39,0.1);border:1px solid rgba(201,162,39,0.3);display:flex;align-items:center;justify-content:center;font-size:24px">💰</div>
+        <div>
+          <div style="font-family:Cinzel,serif;font-size:18px;color:var(--gold)">Amministrazione Contabilità</div>
+          <div style="font-size:12px;color:var(--text-muted)">AD Security — Gestione finanziaria mensile</div>
+        </div>
+        <span id="amm-stato-badge" class="amm-mese-badge nuovo" style="margin-left:auto">● Nuovo mese</span>
+      </div>
 
       <!-- NAVIGAZIONE MESE -->
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:24px;flex-wrap:wrap">
-        <button class="btn-sm btn-secondary" onclick="ammChangeMese(-1)">◀</button>
-        <select id="amm-mese" class="form-control" style="width:140px" onchange="ammLoad()">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:28px;flex-wrap:wrap;background:var(--bg3);padding:14px 16px;border-radius:12px;border:1px solid var(--border)">
+        <button class="btn btn-secondary" style="padding:8px 14px" onclick="ammChangeMese(-1)">◀</button>
+        <select id="amm-mese" class="amm-inp" style="width:150px" onchange="ammLoad()">
           ${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${i+1===mese?'selected':''}>${MESI_NOMI[i+1]}</option>`).join('')}
         </select>
-        <select id="amm-anno" class="form-control" style="width:90px" onchange="ammLoad()">
-          ${Array.from({length:5},(_,i)=>`<option value="${2026+i}" ${2026+i===anno?'selected':''}>${2026+i}</option>`).join('')}
+        <select id="amm-anno" class="amm-inp" style="width:100px" onchange="ammLoad()">
+          ${Array.from({length:6},(_,i)=>`<option value="${2024+i}" ${2024+i===anno?'selected':''}>${2024+i}</option>`).join('')}
         </select>
-        <button class="btn-sm btn-secondary" onclick="ammChangeMese(1)">▶</button>
+        <button class="btn btn-secondary" style="padding:8px 14px" onclick="ammChangeMese(1)">▶</button>
+        <div style="margin-left:auto;font-size:12px;color:var(--text-muted)" id="amm-nav-hint">Naviga tra i mesi</div>
       </div>
 
-      <!-- FORM DATI -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
-        <div>
-          <div class="field-label">💶 Fatture (€)</div>
-          <input id="amm-fatture" type="number" class="form-control" placeholder="0" oninput="ammCalcola()">
-        </div>
-        <div>
-          <div class="field-label">💶 NN (€)</div>
-          <input id="amm-nn" type="number" class="form-control" placeholder="0" oninput="ammCalcola()">
-        </div>
-        <div>
-          <div class="field-label">🔢 N° Servizi Mese</div>
-          <input id="amm-servizi" type="number" class="form-control" placeholder="0" oninput="ammCalcola()">
-        </div>
-        <div>
-          <div class="field-label">👷 Paghe Operatori (€)</div>
-          <input id="amm-paghe-op" type="number" class="form-control" placeholder="0" oninput="ammCalcola()">
-        </div>
-        <div>
-          <div class="field-label">👷 Paghe Operatori B (€)</div>
-          <input id="amm-paghe-op-b" type="number" class="form-control" placeholder="0" oninput="ammCalcola()">
-        </div>
-        <div>
-          <div class="field-label">🏛 Tasse (€)</div>
-          <input id="amm-tax" type="number" class="form-control" placeholder="0" oninput="ammCalcola()">
-        </div>
-        <div>
-          <div class="field-label">📊 Amm. Paghe (€)</div>
-          <input id="amm-amm-paghe" type="number" class="form-control" placeholder="0" oninput="ammCalcola()">
-        </div>
-        <div>
-          <div class="field-label">🛡 Manager Security (€)</div>
-          <input id="amm-manager" type="number" class="form-control" placeholder="0" oninput="ammCalcola()">
-        </div>
-        <div>
-          <div class="field-label">👔 Vestiario (€)</div>
-          <input id="amm-vestiario" type="number" class="form-control" placeholder="0" oninput="ammCalcola()">
-        </div>
-        <div>
-          <div class="field-label">🏢 Società Varie (€)</div>
-          <div style="display:flex;gap:6px;align-items:center">
-            <input id="amm-societa" type="number" class="form-control" placeholder="0" readonly style="flex:1;background:var(--bg2)">
-            <button class="btn-sm btn-secondary" onclick="ammApriDettaglio('societa')">+ Dettaglio</button>
+      <!-- ENTRATE -->
+      <div class="amm-section-title">📥 Entrate</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:8px">
+        <div class="amm-field"><div class="amm-label">💶 Fatture (€)</div><input id="amm-fatture" type="number" class="amm-inp" placeholder="0,00" step="0.01" oninput="ammCalcola()"></div>
+        <div class="amm-field"><div class="amm-label">💶 NN (€)</div><input id="amm-nn" type="number" class="amm-inp" placeholder="0,00" step="0.01" oninput="ammCalcola()"></div>
+        <div class="amm-field"><div class="amm-label">🔢 N° Servizi</div><input id="amm-servizi" type="number" class="amm-inp" placeholder="0" oninput="ammCalcola()"></div>
+      </div>
+
+      <!-- COSTI -->
+      <div class="amm-section-title">📤 Costi</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:8px">
+        <div class="amm-field"><div class="amm-label">👷 Paghe Operatori (€)</div><input id="amm-paghe-op" type="number" class="amm-inp" placeholder="0,00" step="0.01" oninput="ammCalcola()"></div>
+        <div class="amm-field"><div class="amm-label">👷 Paghe Operatori B (€)</div><input id="amm-paghe-op-b" type="number" class="amm-inp" placeholder="0,00" step="0.01" oninput="ammCalcola()"></div>
+        <div class="amm-field"><div class="amm-label">🏛 Tasse (€)</div><input id="amm-tax" type="number" class="amm-inp" placeholder="0,00" step="0.01" oninput="ammCalcola()"></div>
+        <div class="amm-field"><div class="amm-label">📊 Amm. Paghe (€)</div><input id="amm-amm-paghe" type="number" class="amm-inp" placeholder="0,00" step="0.01" oninput="ammCalcola()"></div>
+        <div class="amm-field"><div class="amm-label">🛡 Manager Security (€)</div><input id="amm-manager" type="number" class="amm-inp" placeholder="0,00" step="0.01" oninput="ammCalcola()"></div>
+        <div class="amm-field"><div class="amm-label">👔 Vestiario (€)</div><input id="amm-vestiario" type="number" class="amm-inp" placeholder="0,00" step="0.01" oninput="ammCalcola()"></div>
+        <div class="amm-field">
+          <div class="amm-label">🏢 Società Varie (€)</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input id="amm-societa" type="number" class="amm-inp" placeholder="0,00" readonly style="flex:1;opacity:.7">
+            <button class="btn btn-secondary" style="white-space:nowrap;height:46px;padding:0 14px" onclick="ammApriDettaglio('societa')">+ Dettaglio</button>
           </div>
         </div>
-        <div>
-          <div class="field-label">📦 Costi Vari (€)</div>
-          <div style="display:flex;gap:6px;align-items:center">
-            <input id="amm-costi-vari" type="number" class="form-control" placeholder="0" readonly style="flex:1;background:var(--bg2)">
-            <button class="btn-sm btn-secondary" onclick="ammApriDettaglio('costi-vari')">+ Dettaglio</button>
+        <div class="amm-field">
+          <div class="amm-label">📦 Costi Vari (€)</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input id="amm-costi-vari" type="number" class="amm-inp" placeholder="0,00" readonly style="flex:1;opacity:.7">
+            <button class="btn btn-secondary" style="white-space:nowrap;height:46px;padding:0 14px" onclick="ammApriDettaglio('costi-vari')">+ Dettaglio</button>
           </div>
         </div>
       </div>
 
-      <!-- CALCOLATI -->
-      <div id="amm-calcolati" style="background:var(--bg2);border-radius:10px;padding:16px;margin-bottom:20px;display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:14px"></div>
+      <!-- KPI CALCOLATI -->
+      <div id="amm-calcolati" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:20px 0 24px"></div>
 
       <!-- BOTTONI -->
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:32px">
-        <button class="btn btn-primary" onclick="ammSalva()">💾 Salva</button>
-        <button class="btn" style="background:#1a6e3e;color:#fff" onclick="ammEsportaPDF()">📄 Esporta PDF</button>
-        <button class="btn" style="background:#8b0000;color:#fff" onclick="ammCancellaAll()">💀 Cancella Tutto lo Storico</button>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <button class="btn btn-primary" style="min-width:140px" onclick="ammSalva()">💾 Salva Mese</button>
+        <button class="btn" style="background:linear-gradient(135deg,#0f5132,#1a7a42);color:#fff;min-width:140px" onclick="ammEsportaPDF()">📄 Esporta PDF</button>
+        <button class="btn btn-danger" style="margin-left:auto" onclick="ammCancellaAll()">🗑 Cancella Tutto lo Storico</button>
       </div>
+    </div>
 
-      <!-- RIEPILOGO ANNUALE -->
-      <div class="card-title" style="margin-top:0">📅 Riepilogo Annuale <span id="amm-anno-label"></span></div>
-      <div id="amm-riepilogo-annuale" style="overflow-x:auto;margin-bottom:28px"></div>
+    <!-- RIEPILOGO ANNUALE -->
+    <div class="amm-card">
+      <div class="amm-section-title" style="margin-top:0">📅 Riepilogo Annuale <span id="amm-anno-label" style="color:var(--text)"></span></div>
+      <div id="amm-riepilogo-annuale" style="overflow-x:auto;margin-bottom:8px"></div>
+    </div>
 
-      <!-- GRAFICI -->
-      <div class="card-title">📊 Composizione Mensile</div>
-      <div style="position:relative;height:300px;margin-bottom:32px">
-        <canvas id="amm-chart1"></canvas>
-      </div>
-      <div class="card-title">📈 Andamento Annuale</div>
-      <div style="position:relative;height:300px;margin-bottom:16px">
-        <canvas id="amm-chart2"></canvas>
-      </div>
+    <!-- GRAFICI -->
+    <div class="amm-card">
+      <div class="amm-section-title" style="margin-top:0">📊 Composizione Costi Mensile</div>
+      <div style="position:relative;height:280px;margin-bottom:32px"><canvas id="amm-chart1"></canvas></div>
+      <div class="amm-section-title">📈 Andamento Annuale</div>
+      <div style="position:relative;height:280px;margin-bottom:32px"><canvas id="amm-chart2"></canvas></div>
+      <div class="amm-section-title">📊 Fatturato vs Costi per Mese</div>
+      <div style="position:relative;height:280px;margin-bottom:8px"><canvas id="amm-chart3"></canvas></div>
+    </div>
     </div>
   `;
   await ammLoad();
@@ -5679,7 +5693,7 @@ function ammCalc(d) {
   const ns = parseInt(d.numero_servizi_mese)||0;
   const risultato = fatTot - totCosti;
   const valMedio = ns > 0 ? (fatTot/ns).toFixed(2) : 'N/D';
-  const costoPerServizio = ns > 0 ? ((parseFloat(d.costo_paghe_op)||0+(parseFloat(d.costo_paghe_op_b)||0))/ns).toFixed(2) : 'N/D';
+  const costoPerServizio = ns > 0 ? (((parseFloat(d.costo_paghe_op)||0)+(parseFloat(d.costo_paghe_op_b)||0))/ns).toFixed(2) : 'N/D';
   const margine = fatTot > 0 ? ((risultato/fatTot)*100).toFixed(1)+'%' : 'N/D';
   return { fatTot, totCosti, risultato, valMedio, costoPerServizio, margine };
 }
@@ -5689,14 +5703,14 @@ function ammCalcola() {
   const c = ammCalc(d);
   const el = document.getElementById('amm-calcolati');
   if (!el) return;
-  const col = v => `color:${v>=0?'#27ae60':'#e74c3c'}`;
+  const fmt = v => '€ '+v.toFixed(2).replace('.',',');
   el.innerHTML = `
-    <div><b>Fatturato Totale:</b> <span style="${col(c.fatTot)}">€ ${c.fatTot.toFixed(2)}</span></div>
-    <div><b>Totale Costi:</b> <span style="color:#e74c3c">€ ${c.totCosti.toFixed(2)}</span></div>
-    <div><b>Risultato:</b> <span style="${col(c.risultato)}">€ ${c.risultato.toFixed(2)}</span></div>
-    <div><b>Margine %:</b> <span style="${col(c.risultato)}">${c.margine}</span></div>
-    <div><b>Val. medio/servizio:</b> € ${c.valMedio}</div>
-    <div><b>Costo paghe/servizio:</b> € ${c.costoPerServizio}</div>
+    <div class="amm-kpi"><div class="amm-kpi-label">💶 Fatturato Totale</div><div class="amm-kpi-val" style="color:#c9a227">${fmt(c.fatTot)}</div></div>
+    <div class="amm-kpi"><div class="amm-kpi-label">📤 Totale Costi</div><div class="amm-kpi-val" style="color:#e74c3c">${fmt(c.totCosti)}</div></div>
+    <div class="amm-kpi"><div class="amm-kpi-label">📊 Risultato Netto</div><div class="amm-kpi-val" style="color:${c.risultato>=0?'#2ecc71':'#e74c3c'}">${fmt(c.risultato)}</div></div>
+    <div class="amm-kpi"><div class="amm-kpi-label">📈 Margine %</div><div class="amm-kpi-val" style="color:${c.risultato>=0?'#2ecc71':'#e74c3c'}">${c.margine}</div></div>
+    <div class="amm-kpi"><div class="amm-kpi-label">💰 Val. medio/servizio</div><div class="amm-kpi-val">${c.valMedio==='N/D'?'N/D':'€ '+c.valMedio}</div></div>
+    <div class="amm-kpi"><div class="amm-kpi-label">👷 Costo paghe/servizio</div><div class="amm-kpi-val">${c.costoPerServizio==='N/D'?'N/D':'€ '+c.costoPerServizio}</div></div>
   `;
 }
 
@@ -5704,8 +5718,16 @@ async function ammLoad() {
   const mese = parseInt(document.getElementById('amm-mese')?.value);
   const anno = parseInt(document.getElementById('amm-anno')?.value);
   if (!mese || !anno) return;
+  const badge = document.getElementById('amm-stato-badge');
+  const hint = document.getElementById('amm-nav-hint');
   try {
     const d = await apiFetch(`/admin/amministrazione?mese=${mese}&anno=${anno}`);
+    _ammMeseHasDati = !!(d && (d.fatture || d.nn || d.costo_paghe_op));
+    if (badge) {
+      badge.className = 'amm-mese-badge ' + (_ammMeseHasDati ? 'saved' : 'nuovo');
+      badge.textContent = _ammMeseHasDati ? '✎ Modifica mese' : '● Nuovo mese';
+    }
+    if (hint) hint.textContent = _ammMeseHasDati ? `Dati salvati per ${MESI_NOMI[mese]} ${anno}` : `Nessun dato per ${MESI_NOMI[mese]} ${anno}`;
     const fields = {
       'amm-fatture':'fatture','amm-nn':'nn','amm-servizi':'numero_servizi_mese',
       'amm-paghe-op':'costo_paghe_op','amm-paghe-op-b':'costo_paghe_op_b',
@@ -5715,7 +5737,7 @@ async function ammLoad() {
     };
     Object.entries(fields).forEach(([elId, key]) => {
       const el = document.getElementById(elId);
-      if (el) el.value = d ? (parseFloat(d[key])||0) : '';
+      if (el) el.value = d && (parseFloat(d[key])||0) ? (parseFloat(d[key])||0) : '';
     });
     _ammDettagliSocieta = d?.societa_varie_dettaglio ? JSON.parse(d.societa_varie_dettaglio) : [];
     _ammDettagliCostiVari = d?.costi_vari_dettaglio ? JSON.parse(d.costi_vari_dettaglio) : [];
@@ -5746,7 +5768,12 @@ async function ammSalva() {
   const data = { mese, anno, ...ammGetInputs() };
   try {
     await apiFetch('/admin/amministrazione', {method:'POST', body:JSON.stringify(data)});
-    showToast('Dati salvati ✓');
+    showToast('✓ Dati salvati per '+MESI_NOMI[mese]+' '+anno);
+    _ammMeseHasDati = true;
+    const badge = document.getElementById('amm-stato-badge');
+    const hint = document.getElementById('amm-nav-hint');
+    if (badge) { badge.className='amm-mese-badge saved'; badge.textContent='✎ Modifica mese'; }
+    if (hint) hint.textContent = `Dati salvati per ${MESI_NOMI[mese]} ${anno}`;
     await ammLoadAnnuale(anno);
   } catch(e) { showToast('Errore salvataggio','error'); }
 }
@@ -5764,41 +5791,41 @@ async function ammLoadAnnuale(anno) {
 function ammRenderRiepilogo(rows, anno) {
   const el = document.getElementById('amm-riepilogo-annuale');
   if (!el) return;
-  if (!rows.length) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Nessun dato per questo anno.</div>'; return; }
+  if (!rows.length) { el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:16px;text-align:center">Nessun dato per questo anno.</div>'; return; }
   const totFat = rows.reduce((s,r)=>s+(parseFloat(r.fatture)||0)+(parseFloat(r.nn)||0),0);
   const totCos = rows.reduce((s,r)=>s+ammCalc(r).totCosti,0);
   const totRis = totFat - totCos;
   const totServ = rows.reduce((s,r)=>s+(parseInt(r.numero_servizi_mese)||0),0);
-  el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px">
-    <thead><tr style="background:var(--bg3)">
-      <th style="padding:6px 10px;text-align:left">Mese</th>
-      <th style="padding:6px 10px;text-align:right">Fatturato</th>
-      <th style="padding:6px 10px;text-align:right">Costi</th>
-      <th style="padding:6px 10px;text-align:right">Risultato</th>
-      <th style="padding:6px 10px;text-align:right">Servizi</th>
-      <th style="padding:6px 10px;text-align:right">Margine%</th>
+  const fmt = v => '€ '+v.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+  el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead><tr style="background:linear-gradient(135deg,rgba(201,162,39,0.2),rgba(201,162,39,0.08))">
+      <th style="padding:10px 12px;text-align:left;color:var(--gold);font-weight:700;border-bottom:2px solid rgba(201,162,39,0.3)">Mese</th>
+      <th style="padding:10px 12px;text-align:right;color:var(--gold);font-weight:700;border-bottom:2px solid rgba(201,162,39,0.3)">Fatturato</th>
+      <th style="padding:10px 12px;text-align:right;color:var(--gold);font-weight:700;border-bottom:2px solid rgba(201,162,39,0.3)">Costi</th>
+      <th style="padding:10px 12px;text-align:right;color:var(--gold);font-weight:700;border-bottom:2px solid rgba(201,162,39,0.3)">Risultato</th>
+      <th style="padding:10px 12px;text-align:right;color:var(--gold);font-weight:700;border-bottom:2px solid rgba(201,162,39,0.3)">Servizi</th>
+      <th style="padding:10px 12px;text-align:right;color:var(--gold);font-weight:700;border-bottom:2px solid rgba(201,162,39,0.3)">Margine</th>
     </tr></thead>
     <tbody>
-      ${rows.map(r => {
+      ${rows.map((r,i) => {
         const c = ammCalc(r);
-        const fat = c.fatTot;
-        return `<tr style="border-bottom:1px solid var(--border)">
-          <td style="padding:6px 10px">${MESI_NOMI[r.mese]}</td>
-          <td style="padding:6px 10px;text-align:right">€ ${fat.toFixed(0)}</td>
-          <td style="padding:6px 10px;text-align:right;color:#e74c3c">€ ${c.totCosti.toFixed(0)}</td>
-          <td style="padding:6px 10px;text-align:right;color:${c.risultato>=0?'#27ae60':'#e74c3c'}"><b>€ ${c.risultato.toFixed(0)}</b></td>
-          <td style="padding:6px 10px;text-align:right">${r.numero_servizi_mese}</td>
-          <td style="padding:6px 10px;text-align:right;color:${c.risultato>=0?'#27ae60':'#e74c3c'}">${c.margine}</td>
+        return `<tr style="border-bottom:1px solid var(--border);background:${i%2===0?'transparent':'rgba(255,255,255,0.02)'};transition:background .15s" onmouseover="this.style.background='rgba(201,162,39,0.04)'" onmouseout="this.style.background='${i%2===0?'transparent':'rgba(255,255,255,0.02)'}'">
+          <td style="padding:10px 12px;font-weight:600">${MESI_NOMI[r.mese]}</td>
+          <td style="padding:10px 12px;text-align:right;font-family:monospace">${fmt(c.fatTot)}</td>
+          <td style="padding:10px 12px;text-align:right;color:#e74c3c;font-family:monospace">${fmt(c.totCosti)}</td>
+          <td style="padding:10px 12px;text-align:right;color:${c.risultato>=0?'#2ecc71':'#e74c3c'};font-weight:700;font-family:monospace">${fmt(c.risultato)}</td>
+          <td style="padding:10px 12px;text-align:right">${r.numero_servizi_mese}</td>
+          <td style="padding:10px 12px;text-align:right;color:${c.risultato>=0?'#2ecc71':'#e74c3c'};font-weight:600">${c.margine}</td>
         </tr>`;
       }).join('')}
     </tbody>
-    <tfoot><tr style="background:var(--bg3);font-weight:700">
-      <td style="padding:6px 10px">TOTALE</td>
-      <td style="padding:6px 10px;text-align:right">€ ${totFat.toFixed(0)}</td>
-      <td style="padding:6px 10px;text-align:right;color:#e74c3c">€ ${totCos.toFixed(0)}</td>
-      <td style="padding:6px 10px;text-align:right;color:${totRis>=0?'#27ae60':'#e74c3c'}">€ ${totRis.toFixed(0)}</td>
-      <td style="padding:6px 10px;text-align:right">${totServ}</td>
-      <td style="padding:6px 10px;text-align:right;color:${totRis>=0?'#27ae60':'#e74c3c'}">${totFat>0?((totRis/totFat)*100).toFixed(1)+'%':'N/D'}</td>
+    <tfoot><tr style="background:linear-gradient(135deg,rgba(201,162,39,0.15),rgba(201,162,39,0.05));font-weight:700;border-top:2px solid rgba(201,162,39,0.3)">
+      <td style="padding:10px 12px;color:var(--gold)">TOTALE ${anno}</td>
+      <td style="padding:10px 12px;text-align:right;font-family:monospace;color:var(--gold)">${fmt(totFat)}</td>
+      <td style="padding:10px 12px;text-align:right;color:#e74c3c;font-family:monospace">${fmt(totCos)}</td>
+      <td style="padding:10px 12px;text-align:right;color:${totRis>=0?'#2ecc71':'#e74c3c'};font-family:monospace">${fmt(totRis)}</td>
+      <td style="padding:10px 12px;text-align:right">${totServ}</td>
+      <td style="padding:10px 12px;text-align:right;color:${totRis>=0?'#2ecc71':'#e74c3c'}">${totFat>0?((totRis/totFat)*100).toFixed(1)+'%':'N/D'}</td>
     </tr></tfoot>
   </table>`;
 }
@@ -5806,38 +5833,62 @@ function ammRenderRiepilogo(rows, anno) {
 function ammRenderCharts(rows, anno) {
   if (_ammChart1) { _ammChart1.destroy(); _ammChart1=null; }
   if (_ammChart2) { _ammChart2.destroy(); _ammChart2=null; }
+  if (_ammChart3) { _ammChart3.destroy(); _ammChart3=null; }
   const c1 = document.getElementById('amm-chart1');
   const c2 = document.getElementById('amm-chart2');
-  if (!c1 || !c2 || !rows.length) return;
+  const c3 = document.getElementById('amm-chart3');
+  if (!rows.length) return;
   const mese = parseInt(document.getElementById('amm-mese')?.value);
   const row = rows.find(r=>r.mese===mese) || rows[0];
-  const c = ammCalc(row);
-  const allCostiLabels = ['Paghe Op','Paghe Op B','Tasse','Amm.Paghe','Manager','Vestiario','Soc.Varie','Costi Vari'];
-  const allCostiValues = [parseFloat(row.costo_paghe_op)||0,parseFloat(row.costo_paghe_op_b)||0,parseFloat(row.costo_tax)||0,parseFloat(row.costo_amm_paghe)||0,parseFloat(row.costo_manager_security)||0,parseFloat(row.costo_vestiario)||0,parseFloat(row.costo_societa_varie)||0,parseFloat(row.costi_vari)||0];
-  const costiLabels2 = allCostiLabels.filter((_,i)=>allCostiValues[i]>0);
-  const costiValues2 = allCostiValues.filter(v=>v>0);
-  const colors = ['#e74c3c','#e67e22','#f1c40f','#2ecc71','#3498db','#9b59b6','#1abc9c','#e91e63'];
-  _ammChart1 = new Chart(c1, {
-    type: 'pie',
-    data: { labels: costiLabels2, datasets: [{ data: costiValues2, backgroundColor: colors }] },
-    options: { responsive:true, maintainAspectRatio:false, plugins: { title:{ display:true, text:`Distribuzione Costi — ${MESI_NOMI[row.mese]} ${anno}`, color:'#c9a227' }, legend:{ labels:{ color:'#aaa' } } } }
-  });
-  const allMesi = Array.from({length:12},(_,i)=>i+1);
-  const fatData = allMesi.map(m=>{ const r=rows.find(x=>x.mese===m); return r?(parseFloat(r.fatture)||0)+(parseFloat(r.nn)||0):null; });
-  const costiData = allMesi.map(m=>{ const r=rows.find(x=>x.mese===m); return r?ammCalc(r).totCosti:null; });
-  const risData = allMesi.map(m=>{ const r=rows.find(x=>x.mese===m); return r?ammCalc(r).risultato:null; });
-  _ammChart2 = new Chart(c2, {
-    type: 'line',
-    data: {
-      labels: MESI_NOMI.slice(1),
-      datasets: [
-        { label:'Fatturato', data:fatData, borderColor:'#c9a227', backgroundColor:'rgba(201,162,39,0.1)', tension:0.3, spanGaps:true },
-        { label:'Costi', data:costiData, borderColor:'#e74c3c', backgroundColor:'rgba(231,76,60,0.1)', tension:0.3, spanGaps:true },
-        { label:'Risultato', data:risData, borderColor:'#27ae60', backgroundColor:'rgba(39,174,96,0.1)', tension:0.3, spanGaps:true }
-      ]
-    },
-    options: { responsive:true, maintainAspectRatio:false, plugins:{ title:{display:true,text:`Andamento ${anno}`,color:'#c9a227'}, legend:{labels:{color:'#aaa'}} }, scales:{ x:{ticks:{color:'#aaa'}}, y:{ticks:{color:'#aaa', callback:v=>'€'+v}} } }
-  });
+  // Chart 1: Pie - composizione costi
+  if (c1) {
+    const allCostiLabels = ['Paghe Op','Paghe Op B','Tasse','Amm.Paghe','Manager','Vestiario','Soc.Varie','Costi Vari'];
+    const allCostiValues = [parseFloat(row.costo_paghe_op)||0,parseFloat(row.costo_paghe_op_b)||0,parseFloat(row.costo_tax)||0,parseFloat(row.costo_amm_paghe)||0,parseFloat(row.costo_manager_security)||0,parseFloat(row.costo_vestiario)||0,parseFloat(row.costo_societa_varie)||0,parseFloat(row.costi_vari)||0];
+    const costiLabels2 = allCostiLabels.filter((_,i)=>allCostiValues[i]>0);
+    const costiValues2 = allCostiValues.filter(v=>v>0);
+    const colors = ['#e74c3c','#e67e22','#f1c40f','#2ecc71','#3498db','#9b59b6','#1abc9c','#e91e63'];
+    _ammChart1 = new Chart(c1, {
+      type: 'pie',
+      data: { labels: costiLabels2, datasets: [{ data: costiValues2, backgroundColor: colors, borderWidth:2, borderColor:'rgba(0,0,0,0.3)' }] },
+      options: { responsive:true, maintainAspectRatio:false, plugins: { title:{ display:true, text:`Distribuzione Costi — ${MESI_NOMI[row.mese]} ${anno}`, color:'#c9a227', font:{size:13} }, legend:{ labels:{ color:'#aaa', padding:16 } } } }
+    });
+  }
+  // Chart 2: Line - andamento annuale
+  if (c2) {
+    const allMesi = Array.from({length:12},(_,i)=>i+1);
+    const fatData = allMesi.map(m=>{ const r=rows.find(x=>x.mese===m); return r?(parseFloat(r.fatture)||0)+(parseFloat(r.nn)||0):null; });
+    const costiData = allMesi.map(m=>{ const r=rows.find(x=>x.mese===m); return r?ammCalc(r).totCosti:null; });
+    const risData = allMesi.map(m=>{ const r=rows.find(x=>x.mese===m); return r?ammCalc(r).risultato:null; });
+    _ammChart2 = new Chart(c2, {
+      type: 'line',
+      data: {
+        labels: MESI_NOMI.slice(1),
+        datasets: [
+          { label:'Fatturato', data:fatData, borderColor:'#c9a227', backgroundColor:'rgba(201,162,39,0.1)', tension:0.3, spanGaps:true, pointRadius:5, pointHoverRadius:8 },
+          { label:'Costi', data:costiData, borderColor:'#e74c3c', backgroundColor:'rgba(231,76,60,0.1)', tension:0.3, spanGaps:true, pointRadius:5, pointHoverRadius:8 },
+          { label:'Risultato', data:risData, borderColor:'#2ecc71', backgroundColor:'rgba(46,204,113,0.1)', tension:0.3, spanGaps:true, pointRadius:5, pointHoverRadius:8 }
+        ]
+      },
+      options: { responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false}, plugins:{ title:{display:true,text:`Andamento ${anno}`,color:'#c9a227',font:{size:13}}, legend:{labels:{color:'#aaa'}} }, scales:{ x:{ticks:{color:'#aaa'},grid:{color:'rgba(255,255,255,0.05)'}}, y:{ticks:{color:'#aaa', callback:v=>'€'+v.toFixed(0)},grid:{color:'rgba(255,255,255,0.05)'}} } }
+    });
+  }
+  // Chart 3: Bar - Fatturato vs Costi per mese
+  if (c3) {
+    const allMesi = Array.from({length:12},(_,i)=>i+1);
+    const fatBar = allMesi.map(m=>{ const r=rows.find(x=>x.mese===m); return r?(parseFloat(r.fatture)||0)+(parseFloat(r.nn)||0):0; });
+    const costiBar = allMesi.map(m=>{ const r=rows.find(x=>x.mese===m); return r?ammCalc(r).totCosti:0; });
+    _ammChart3 = new Chart(c3, {
+      type: 'bar',
+      data: {
+        labels: MESI_NOMI.slice(1),
+        datasets: [
+          { label:'Fatturato', data:fatBar, backgroundColor:'rgba(201,162,39,0.7)', borderColor:'rgba(201,162,39,1)', borderWidth:1, borderRadius:6 },
+          { label:'Costi', data:costiBar, backgroundColor:'rgba(231,76,60,0.7)', borderColor:'rgba(231,76,60,1)', borderWidth:1, borderRadius:6 }
+        ]
+      },
+      options: { responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false}, plugins:{ title:{display:true,text:`Fatturato vs Costi per Mese — ${anno}`,color:'#c9a227',font:{size:13}}, legend:{labels:{color:'#aaa'}} }, scales:{ x:{ticks:{color:'#aaa'},grid:{color:'rgba(255,255,255,0.05)'}}, y:{ticks:{color:'#aaa', callback:v=>'€'+v.toFixed(0)},grid:{color:'rgba(255,255,255,0.05)'}, beginAtZero:true} } }
+    });
+  }
 }
 
 async function ammCancellaAll() {
@@ -5855,56 +5906,143 @@ async function ammEsportaPDF() {
   const anno = parseInt(document.getElementById('amm-anno')?.value);
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
-  const W = 210, m = 15;
-  let y = 20;
-  doc.setFontSize(18); doc.setTextColor(201,162,39);
-  doc.text('AD Security — Contabilità', m, y); y+=10;
-  doc.setFontSize(12); doc.setTextColor(100,100,100);
-  doc.text(`${MESI_NOMI[mese]} ${anno}`, m, y); y+=10;
-  doc.setTextColor(0,0,0); doc.setFontSize(11);
+  const W = 210, m = 16;
+  // ── HEADER ──
+  doc.setFillColor(201,162,39);
+  doc.rect(0,0,210,28,'F');
+  doc.setFontSize(18); doc.setTextColor(0,0,0); doc.setFont(undefined,'bold');
+  doc.text('AD SECURITY', m, 12);
+  doc.setFontSize(11); doc.setFont(undefined,'normal');
+  doc.text('Gestione Operatori — Contabilità Mensile', m, 20);
+  doc.setFontSize(11); doc.setTextColor(0,0,0);
+  doc.text(`${MESI_NOMI[mese]} ${anno}`, W-m, 12, {align:'right'});
+  doc.text(`Generato il ${new Date().toLocaleString('it-IT')}`, W-m, 20, {align:'right'});
+  // ── DATI CORRENTI ──
+  let y = 38;
+  doc.setFontSize(12); doc.setTextColor(150,100,0); doc.setFont(undefined,'bold');
+  doc.text(`DETTAGLIO MENSILE — ${MESI_NOMI[mese].toUpperCase()} ${anno}`, m, y); y+=3;
+  doc.setDrawColor(201,162,39); doc.setLineWidth(0.5); doc.line(m, y, W-m, y); y+=7;
   const d = ammGetInputs();
   const c = ammCalc(d);
-  const rows = [
-    ['Fatture', '€ '+((parseFloat(d.fatture)||0).toFixed(2))],
-    ['NN', '€ '+((parseFloat(d.nn)||0).toFixed(2))],
-    ['Fatturato Totale', '€ '+c.fatTot.toFixed(2)],
-    ['N° Servizi', d.numero_servizi_mese],
-    ['Paghe Operatori', '€ '+((parseFloat(d.costo_paghe_op)||0).toFixed(2))],
-    ['Paghe Operatori B', '€ '+((parseFloat(d.costo_paghe_op_b)||0).toFixed(2))],
-    ['Tasse', '€ '+((parseFloat(d.costo_tax)||0).toFixed(2))],
-    ['Amm. Paghe', '€ '+((parseFloat(d.costo_amm_paghe)||0).toFixed(2))],
-    ['Manager Security', '€ '+((parseFloat(d.costo_manager_security)||0).toFixed(2))],
-    ['Vestiario', '€ '+((parseFloat(d.costo_vestiario)||0).toFixed(2))],
-    ['Società Varie', '€ '+((parseFloat(d.costo_societa_varie)||0).toFixed(2))],
-    ['Costi Vari', '€ '+((parseFloat(d.costi_vari)||0).toFixed(2))],
-    ..._ammDettagliCostiVari.map(v=>['  └ '+v.descrizione, '€ '+parseFloat(v.importo).toFixed(2)]),
-    ..._ammDettagliSocieta.length ? [['Dettaglio Società Varie','']] : [],
-    ..._ammDettagliSocieta.map(v=>['  └ '+v.descrizione, '€ '+parseFloat(v.importo).toFixed(2)]),
-    ['Totale Costi', '€ '+c.totCosti.toFixed(2)],
-    ['Risultato Finale', '€ '+c.risultato.toFixed(2)],
-    ['Margine %', c.margine],
-    ['Val. medio/servizio', '€ '+c.valMedio],
+  const fmt = v => '€ '+v.toFixed(2).replace('.',',');
+  const entrateRows = [
+    ['Fatture',fmt(parseFloat(d.fatture)||0)],
+    ['NN',fmt(parseFloat(d.nn)||0)],
+    ['N° Servizi Mese',String(d.numero_servizi_mese)],
+    ['FATTURATO TOTALE',fmt(c.fatTot)],
   ];
-  doc.autoTable({ startY:y, head:[['Voce','Valore']], body:rows, theme:'grid', headStyles:{fillColor:[201,162,39],textColor:[0,0,0]}, margin:{left:m,right:m} });
-  y = doc.lastAutoTable.finalY + 10;
+  const costiRows = [
+    ['Paghe Operatori',fmt(parseFloat(d.costo_paghe_op)||0)],
+    ['Paghe Operatori B',fmt(parseFloat(d.costo_paghe_op_b)||0)],
+    ['Tasse',fmt(parseFloat(d.costo_tax)||0)],
+    ['Amm. Paghe',fmt(parseFloat(d.costo_amm_paghe)||0)],
+    ['Manager Security',fmt(parseFloat(d.costo_manager_security)||0)],
+    ['Vestiario',fmt(parseFloat(d.costo_vestiario)||0)],
+    ['Società Varie',fmt(parseFloat(d.costo_societa_varie)||0)],
+    ..._ammDettagliSocieta.map(v=>['   └ '+v.descrizione,fmt(parseFloat(v.importo)||0)]),
+    ['Costi Vari',fmt(parseFloat(d.costi_vari)||0)],
+    ..._ammDettagliCostiVari.map(v=>['   └ '+v.descrizione,fmt(parseFloat(v.importo)||0)]),
+    ['TOTALE COSTI',fmt(c.totCosti)],
+  ];
+  doc.autoTable({
+    startY:y, head:[['📥 ENTRATE','']],
+    body: entrateRows,
+    theme:'striped',
+    headStyles:{fillColor:[30,80,30],textColor:[255,255,255],fontStyle:'bold'},
+    columnStyles:{0:{cellWidth:120},1:{halign:'right',fontStyle:'bold'}},
+    styles:{fontSize:11},
+    margin:{left:m,right:m}
+  });
+  y = doc.lastAutoTable.finalY + 6;
+  doc.autoTable({
+    startY:y, head:[['📤 COSTI','']],
+    body: costiRows,
+    theme:'striped',
+    headStyles:{fillColor:[120,30,30],textColor:[255,255,255],fontStyle:'bold'},
+    columnStyles:{0:{cellWidth:120},1:{halign:'right',fontStyle:'bold'}},
+    styles:{fontSize:11},
+    didParseCell:(data)=>{
+      if(data.row.raw && (data.row.raw[0]==='TOTALE COSTI'||data.row.raw[0]==='FATTURATO TOTALE'))
+        { data.cell.styles.fontStyle='bold'; data.cell.styles.fillColor=[50,50,50]; }
+      if(data.row.raw && data.row.raw[0]&&data.row.raw[0].startsWith('   └'))
+        { data.cell.styles.textColor=[120,120,120]; data.cell.styles.fontSize=9; }
+    },
+    margin:{left:m,right:m}
+  });
+  y = doc.lastAutoTable.finalY + 6;
+  // ── RISULTATO ──
+  const risCol = c.risultato >= 0 ? [30,150,50] : [180,30,30];
+  doc.autoTable({
+    startY:y,
+    head:[['📊 RISULTATO E KPI','']],
+    body:[
+      ['Risultato Netto', fmt(c.risultato)],
+      ['Margine %', c.margine],
+      ['Valore medio/servizio', c.valMedio==='N/D'?'N/D':'€ '+c.valMedio],
+      ['Costo paghe/servizio', c.costoPerServizio==='N/D'?'N/D':'€ '+c.costoPerServizio],
+    ],
+    theme:'grid',
+    headStyles:{fillColor:[40,40,80],textColor:[255,255,255],fontStyle:'bold'},
+    columnStyles:{0:{cellWidth:120},1:{halign:'right',fontStyle:'bold'}},
+    styles:{fontSize:12},
+    didParseCell:(data)=>{
+      if(data.row.index===0&&data.column.index===1)
+        { data.cell.styles.textColor=risCol; data.cell.styles.fontSize=14; }
+    },
+    margin:{left:m,right:m}
+  });
+  // ── RIEPILOGO ANNUALE ──
   try {
     const annuali = await apiFetch(`/admin/amministrazione/anno/${anno}`);
     if (annuali.length) {
-      doc.setFontSize(13); doc.setTextColor(201,162,39);
-      doc.text(`Riepilogo Annuale ${anno}`, m, y); y+=5;
-      const annBody = annuali.map(r=>{ const ca=ammCalc(r); return [MESI_NOMI[r.mese],'€ '+ca.fatTot.toFixed(0),'€ '+ca.totCosti.toFixed(0),'€ '+ca.risultato.toFixed(0),ca.margine]; });
-      doc.autoTable({ startY:y, head:[['Mese','Fatturato','Costi','Risultato','Margine']], body:annBody, theme:'grid', headStyles:{fillColor:[201,162,39],textColor:[0,0,0]}, margin:{left:m,right:m} });
+      doc.addPage();
+      doc.setFillColor(201,162,39);
+      doc.rect(0,0,210,18,'F');
+      doc.setFontSize(14); doc.setTextColor(0,0,0); doc.setFont(undefined,'bold');
+      doc.text(`RIEPILOGO ANNUALE ${anno}`, m, 12);
+      const totFat = annuali.reduce((s,r)=>s+(parseFloat(r.fatture)||0)+(parseFloat(r.nn)||0),0);
+      const totCos = annuali.reduce((s,r)=>s+ammCalc(r).totCosti,0);
+      const totRis = totFat-totCos;
+      const totServ = annuali.reduce((s,r)=>s+(parseInt(r.numero_servizi_mese)||0),0);
+      const fmtN = v => '€ '+v.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+      const annBody = annuali.map(r=>{ const ca=ammCalc(r); return [MESI_NOMI[r.mese],fmtN(ca.fatTot),fmtN(ca.totCosti),fmtN(ca.risultato),ca.margine,String(r.numero_servizi_mese)]; });
+      annBody.push(['TOTALE',fmtN(totFat),fmtN(totCos),fmtN(totRis),totFat>0?((totRis/totFat)*100).toFixed(1)+'%':'N/D',String(totServ)]);
+      doc.autoTable({
+        startY:24,
+        head:[['Mese','Fatturato','Costi','Risultato','Margine','Servizi']],
+        body:annBody,
+        theme:'striped',
+        headStyles:{fillColor:[201,162,39],textColor:[0,0,0],fontStyle:'bold'},
+        styles:{fontSize:11,halign:'right'},
+        columnStyles:{0:{halign:'left'},4:{fontStyle:'bold'},5:{halign:'center'}},
+        didParseCell:(data)=>{
+          if(data.row.index===annBody.length-1){data.cell.styles.fontStyle='bold';data.cell.styles.fillColor=[30,30,30];}
+          if(data.row.index<annBody.length-1&&data.column.index===3){
+            const r=annuali[data.row.index];if(r){const v=ammCalc(r).risultato;data.cell.styles.textColor=v>=0?[30,150,50]:[180,30,30];}
+          }
+        },
+        margin:{left:m,right:m}
+      });
     }
   } catch(e) {}
+  // ── GRAFICI ──
   const c1 = document.getElementById('amm-chart1');
   const c2 = document.getElementById('amm-chart2');
-  if (c1) { try { const img=c1.toDataURL('image/png'); doc.addPage(); doc.addImage(img,'PNG',m,20,W-m*2,100); } catch(e){} }
-  if (c2) { try { const img=c2.toDataURL('image/png'); doc.addPage(); doc.addImage(img,'PNG',m,20,W-m*2,100); } catch(e){} }
-  doc.setFontSize(9); doc.setTextColor(150,150,150);
-  doc.text(`Generato il ${new Date().toLocaleString('it-IT')}`, m, 285);
+  const c3 = document.getElementById('amm-chart3');
+  if (c1||c2||c3) {
+    doc.addPage();
+    doc.setFillColor(201,162,39);
+    doc.rect(0,0,210,18,'F');
+    doc.setFontSize(13); doc.setTextColor(0,0,0); doc.setFont(undefined,'bold');
+    doc.text('GRAFICI — ANALISI VISUALE', m, 12);
+    let gy=24;
+    if(c1){try{const img=c1.toDataURL('image/png');doc.addImage(img,'PNG',m,gy,W-m*2,90);gy+=95;}catch(e){}}
+    if(c2){try{const img=c2.toDataURL('image/png');doc.addImage(img,'PNG',m,gy,W-m*2,90);gy+=95;}catch(e){}}
+    if(c3&&gy>200){doc.addPage();gy=20;}
+    if(c3){try{const img=c3.toDataURL('image/png');doc.addImage(img,'PNG',m,gy,W-m*2,90);}catch(e){}}
+  }
   doc.save(`AlfaSecurity_Contabilita_${MESI_NOMI[mese]}_${anno}.pdf`);
 }
-
 // ══ THEME TOGGLE ════════════════════════════════════════════════════════════
 function renderAdminReportMese(content) {
   content.innerHTML = `
@@ -6022,7 +6160,7 @@ function _caOpenModal(id){
   <div style="display:flex;flex-direction:column;gap:14px;margin-top:6px">
     <div class="field-group"><div class="field-label">Operatore *</div><select class="field-input" id="ca-m-op"><option value="">— Seleziona —</option>${window._CA.operatori.map(o=>`<option value="${o.id}" ${a&&a.operatore_id===o.id?'selected':''}>${o.nome} ${o.cognome}</option>`).join('')}</select></div>
     <div class="field-group"><div class="field-label">Categoria *</div><select class="field-input" id="ca-m-cat" onchange="_caModalCat()"><option value="">— Seleziona —</option>${cats.map(c=>`<option value="${c}" ${a&&a.categoria===c?'selected':''}>${_caCat(c).icon} ${c}</option>`).join('')}</select></div>
-    <div class="field-group" id="ca-m-varwrap" style="${a&&a.categoria==='Varie'?'':'display:none'}"><div class="field-label">Specifica voce *</div><input class="field-input" id="ca-m-var" type="text" placeholder="Es: Borsa Security, Casco..." value="${a&&a.descrizione_varie?a.descrizione_varie:''}"></div>
+    <div class="field-group" id="ca-m-varwrap" style="${a&&a.categoria?'':'display:none'}"><div class="field-label" id="ca-m-var-lbl">${a&&a.categoria==='Varie'?'Specifica voce *':'Descrizione / Dettaglio (opzionale)'}</div><input class="field-input" id="ca-m-var" type="text" placeholder="Es: modello, taglia, corso, motivo..." value="${a&&a.descrizione_varie?a.descrizione_varie:''}"></div>
     <div class="field-group"><div class="field-label">Data Spesa *</div><input class="field-input" id="ca-m-data" type="date" value="${a?a.data_spesa:new Date().toISOString().split('T')[0]}"></div>
     <div class="field-group"><div class="field-label">Importo Totale (€) *</div><input class="field-input" id="ca-m-imp" type="number" min="0.01" step="0.01" placeholder="0.00" value="${a?a.importo_totale:''}"></div>
     <div class="field-group"><div class="field-label">Note Admin</div><textarea class="field-input" id="ca-m-note" style="min-height:56px">${a?a.note_admin:''}</textarea></div>
@@ -6032,7 +6170,7 @@ function _caOpenModal(id){
     <button class="btn-sm btn-secondary" onclick="closeModalDirect()">Annulla</button>
   </div>`);
 }
-function _caModalCat(){const c=document.getElementById('ca-m-cat').value;const w=document.getElementById('ca-m-varwrap');if(w)w.style.display=c==='Varie'?'':'none';}
+function _caModalCat(){const c=document.getElementById('ca-m-cat').value;const w=document.getElementById('ca-m-varwrap');const lbl=document.getElementById('ca-m-var-lbl');if(w)w.style.display=c?'':'none';if(lbl)lbl.textContent=c==='Varie'?'Specifica voce *':'Descrizione / Dettaglio (opzionale)';}
 
 async function _caSaveModal(id){
   const opId=document.getElementById('ca-m-op').value;
@@ -6043,16 +6181,16 @@ async function _caSaveModal(id){
   const note=document.getElementById('ca-m-note').value.trim();
   if(!opId){showToast('Seleziona operatore','error');return;}
   if(!cat){showToast('Seleziona categoria','error');return;}
-  if(cat==='Varie'&&!varie){showToast('Specifica la voce','error');return;}
+  if(cat==='Varie'&&!varie){showToast('Specifica la voce per Varie','error');return;}
   if(!data){showToast('Inserisci la data','error');return;}
   if(!imp||imp<=0){showToast('Inserisci importo valido','error');return;}
   const op=_caGetOp(opId);
   try {
     if(!id){
-      await apiFetch('/cassa-anticipi',{method:'POST',body:JSON.stringify({operatore_id:opId,categoria:cat,descrizione_varie:cat==='Varie'?varie:null,data_spesa:data,importo_totale:imp,note_admin:note})});
+      await apiFetch('/cassa-anticipi',{method:'POST',body:JSON.stringify({operatore_id:opId,categoria:cat,descrizione_varie:varie||null,data_spesa:data,importo_totale:imp,note_admin:note})});
       showToast('✓ Spesa salvata. Notifica inviata a '+op.nome+' '+op.cognome);
     } else {
-      await apiFetch('/cassa-anticipi/'+id,{method:'PUT',body:JSON.stringify({operatore_id:opId,categoria:cat,descrizione_varie:cat==='Varie'?varie:null,data_spesa:data,importo_totale:imp,note_admin:note})});
+      await apiFetch('/cassa-anticipi/'+id,{method:'PUT',body:JSON.stringify({operatore_id:opId,categoria:cat,descrizione_varie:varie||null,data_spesa:data,importo_totale:imp,note_admin:note})});
       showToast('✓ Spesa aggiornata. Notifica inviata a '+op.nome+' '+op.cognome);
     }
     closeModalDirect();_caRender();
@@ -6317,7 +6455,7 @@ async function renderAdminCassaAnticpi(content){
         <div style="font-size:11px;color:var(--text-muted);font-family:monospace">Anticipato: <strong style="color:#f59e0b">${_caFmtAmt(selOpT)}</strong> | Rimb: <strong style="color:#10b981">${_caFmtAmt(selOpR)}</strong> | Res: <strong style="color:${selOpT-selOpR>0?'#ef4444':'#10b981'}">${_caFmtAmt(selOpT-selOpR)}</strong></div>
       </div>`:''}
       <div style="display:flex;gap:16px;flex-wrap:wrap">
-        <div><div style="font-size:9px;letter-spacing:1.5px;color:var(--text-muted);text-transform:uppercase;margin-bottom:7px">Categoria</div><div style="display:flex;gap:5px;flex-wrap:wrap"><span class="ca-chip ${f.cat==='tutti'?'on':''}" onclick="_caSetF('cat','tutti')">Tutte</span>${cats.map(c=>`<span class="ca-chip ${f.cat===c?'on':''}" onclick="_caSetF('cat',${JSON.stringify(c)})">${_caCat(c).icon} ${c}</span>`).join('')}</div></div>
+        <div><div style="font-size:9px;letter-spacing:1.5px;color:var(--text-muted);text-transform:uppercase;margin-bottom:7px">Categoria</div><div style="display:flex;gap:5px;flex-wrap:wrap"><span class="ca-chip ${f.cat==='tutti'?'on':''}" onclick="_caSetF('cat','tutti')">Tutte</span>${cats.map(c=>`<span class="ca-chip ${f.cat===c?'on':''}" onclick="_caSetF('cat','${c.replace(/'/g,"\\'")}')">${_caCat(c).icon} ${c}</span>`).join('')}</div></div>
         <div><div style="font-size:9px;letter-spacing:1.5px;color:var(--text-muted);text-transform:uppercase;margin-bottom:7px">Stato</div><div style="display:flex;gap:5px"><span class="ca-chip ${f.stato==='tutti'?'on':''}" onclick="_caSetF('stato','tutti')">Tutti</span><span class="ca-chip ${f.stato==='Aperto'?'on':''}" onclick="_caSetF('stato','Aperto')">Aperto</span><span class="ca-chip ${f.stato==='Parziale'?'on':''}" onclick="_caSetF('stato','Parziale')">Parziale</span><span class="ca-chip ${f.stato==='Saldato'?'on':''}" onclick="_caSetF('stato','Saldato')">Saldato</span></div></div>
       </div>
     </div>

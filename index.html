@@ -2785,6 +2785,7 @@ async function myTesseraPrint(userId) {
 function renderUserProfile(content) {
   const u = currentUser;
   content.innerHTML = `
+    <div style="text-align:center;padding:20px 16px 8px"><img src="/logo-operator.png" alt="Alfa Security Operator" style="max-width:260px;width:65%;height:auto"></div>
     <div class="card">
       <div class="card-title">👤 Dati Personali</div>
       <div id="profile-save-status" style="font-size:12px;color:#2ecc71;margin-bottom:10px;display:none">✓ Salvato automaticamente</div>
@@ -3509,6 +3510,7 @@ async function renderUserMessages(content) {
     const navMsg = document.getElementById('nav-msgs');
     if(navMsg) navMsg.innerHTML = '<span class="nav-icon">📬</span> Messaggi';
     content.innerHTML = `
+    <div style="text-align:center;padding:20px 16px 8px"><img src="/logo-operator.png" alt="Alfa Security Operator" style="max-width:260px;width:65%;height:auto"></div>
     <div class="card">
       <div class="card-title">📬 Messaggi (${msgs.length})</div>
       ${msgs.length===0 ? '<div class="empty-state"><div class="empty-icon">📭</div>Nessun messaggio</div>' : `
@@ -4538,6 +4540,7 @@ async function renderUserInfo(content) {
   try {
     const infoItems = await apiFetch('/info-items');
     content.innerHTML = `
+      <div style="text-align:center;padding:20px 16px 8px"><img src="/logo-operator.png" alt="Alfa Security Operator" style="max-width:260px;width:65%;height:auto"></div>
       <div class="card">
         <div class="card-title">ℹ️ Informazioni Utili</div>
         <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;line-height:1.7">
@@ -4698,6 +4701,7 @@ async function renderUserRules(content) {
     };
     const pending = rules.filter(r => !getUserRuleDecision(r.id)).length;
     content.innerHTML = `
+      <div style="text-align:center;padding:20px 16px 8px"><img src="/logo-operator.png" alt="Alfa Security Operator" style="max-width:260px;width:65%;height:auto"></div>
       <div class="card">
         <div class="card-title">📜 Accettazione Regole</div>
         ${pending > 0 ? `

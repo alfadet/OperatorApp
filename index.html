@@ -1610,13 +1610,13 @@ function loginAs(user) {
 async function initOneSignal() {
   try {
     if (typeof Notification === 'undefined') return;
-    if (Notification.permission === 'granted') {
-      // già concesso: init silenzioso e salva id
+    if (Notification.permission === 'denied') return;
+    // Se il browser ha già il permesso E il player_id è salvato nel DB → silent
+    if (Notification.permission === 'granted' && currentUser?.has_push) {
       _oneSignalInitSilent();
       return;
     }
-    if (Notification.permission === 'denied') return;
-    // permesso 'default': mostra modal subito
+    // Mostra modal: permesso non dato OPPURE player_id non salvato
     const overlay = document.createElement('div');
     overlay.id = 'push-banner';
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:99999;display:flex;align-items:center;justify-content:center;';
@@ -1650,20 +1650,28 @@ async function _oneSignalInitSilent() {
 async function enablePushNotifications() {
   try {
     document.getElementById('push-banner')?.remove();
+    // Chiama requestPermission direttamente nel gesto utente (senza await asincroni prima)
+    const permission = await Notification.requestPermission();
+    console.log('Permesso notifiche:', permission);
+    if (permission !== 'granted') return;
+    // Ora init OneSignal per ottenere il player_id
     if (!window.OneSignalDeferred) return;
     const cfg = await apiFetch('/config');
     if (!cfg || !cfg.onesignal_app_id) return;
     window.OneSignalDeferred.push(async function(OneSignal) {
       await OneSignal.init({ appId: cfg.onesignal_app_id, notifyButton: { enable: false } });
-      const granted = await OneSignal.Notifications.requestPermission();
-      console.log('OneSignal: permesso', granted);
-      if (granted) {
+      // Aspetta che la subscription sia pronta
+      await new Promise(r => setTimeout(r, 2000));
+      const pid = OneSignal.User.PushSubscription.id;
+      console.log('Player ID:', pid);
+      if (pid) {
+        await apiFetch('/push-token', { method: 'POST', body: JSON.stringify({ player_id: pid }) });
+        console.log('Player ID salvato');
+      } else {
         OneSignal.User.PushSubscription.addEventListener('change', async () => {
-          const pid = OneSignal.User.PushSubscription.id;
-          if (pid) await apiFetch('/push-token', { method: 'POST', body: JSON.stringify({ player_id: pid }) });
+          const p = OneSignal.User.PushSubscription.id;
+          if (p) await apiFetch('/push-token', { method: 'POST', body: JSON.stringify({ player_id: p }) });
         });
-        const pid = OneSignal.User.PushSubscription.id;
-        if (pid) await apiFetch('/push-token', { method: 'POST', body: JSON.stringify({ player_id: pid }) });
       }
     });
   } catch(e) { console.log('Push enable error:', e.message); }

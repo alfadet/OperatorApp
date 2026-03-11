@@ -1609,27 +1609,43 @@ function loginAs(user) {
 
 async function initOneSignal() {
   try {
-    if (!window.OneSignalDeferred) { console.log('OneSignal: SDK non caricato'); return; }
+    if (!window.OneSignalDeferred) return;
     const cfg = await apiFetch('/config');
-    if (!cfg || !cfg.onesignal_app_id) { console.log('OneSignal: app_id mancante'); return; }
+    if (!cfg || !cfg.onesignal_app_id) return;
     window.OneSignalDeferred.push(async function(OneSignal) {
-      await OneSignal.init({
-        appId: cfg.onesignal_app_id,
-        notifyButton: { enable: false }
-      });
+      await OneSignal.init({ appId: cfg.onesignal_app_id, notifyButton: { enable: false } });
       const saveId = async () => {
         const playerId = OneSignal.User.PushSubscription.id;
         if (playerId) {
           await apiFetch('/push-token', { method: 'POST', body: JSON.stringify({ player_id: playerId }) });
           console.log('OneSignal: player_id salvato', playerId);
+          document.getElementById('push-banner')?.remove();
         }
       };
       OneSignal.User.PushSubscription.addEventListener('change', saveId);
-      const granted = await OneSignal.Notifications.requestPermission();
-      console.log('OneSignal: permesso', granted);
-      if (granted) await saveId();
+      // Se già iscritto, salva subito
+      if (OneSignal.User.PushSubscription.id) { await saveId(); return; }
+      // Mostra banner solo se permesso non ancora dato
+      if (Notification.permission === 'default') {
+        const banner = document.createElement('div');
+        banner.id = 'push-banner';
+        banner.style.cssText = 'position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:#1a1a2e;border:1px solid #c9a227;color:#fff;padding:12px 20px;border-radius:10px;z-index:9999;display:flex;align-items:center;gap:12px;box-shadow:0 4px 20px rgba(0,0,0,0.5);font-size:14px;';
+        banner.innerHTML = `<span>🔔 Attiva le notifiche push</span><button onclick="enablePushNotifications()" style="background:#c9a227;color:#000;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-weight:600;">Attiva</button><button onclick="document.getElementById('push-banner').remove()" style="background:transparent;color:#aaa;border:none;cursor:pointer;font-size:18px;">×</button>`;
+        document.body.appendChild(banner);
+        window._oneSignalInstance = OneSignal;
+        window._oneSignalSaveId = saveId;
+      }
     });
   } catch(e) { console.log('OneSignal init error:', e.message); }
+}
+
+async function enablePushNotifications() {
+  try {
+    const OneSignal = window._oneSignalInstance;
+    if (!OneSignal) return;
+    const granted = await OneSignal.Notifications.requestPermission();
+    if (granted && window._oneSignalSaveId) await window._oneSignalSaveId();
+  } catch(e) { console.log('Push enable error:', e.message); }
 }
 
 function doLogout() {

@@ -1625,13 +1625,19 @@ async function initOneSignal() {
       OneSignal.User.PushSubscription.addEventListener('change', saveId);
       // Se già iscritto, salva subito
       if (OneSignal.User.PushSubscription.id) { await saveId(); return; }
-      // Mostra banner solo se permesso non ancora dato
+      // Mostra modal bloccante se permesso non ancora dato
       if (Notification.permission === 'default') {
-        const banner = document.createElement('div');
-        banner.id = 'push-banner';
-        banner.style.cssText = 'position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#1a1a2e;border:1px solid #c9a227;color:#fff;padding:12px 20px;border-radius:10px;z-index:10000;display:flex;align-items:center;gap:12px;box-shadow:0 4px 20px rgba(0,0,0,0.5);font-size:14px;white-space:nowrap;';
-        banner.innerHTML = `<span>🔔 Attiva le notifiche push</span><button onclick="enablePushNotifications()" style="background:#c9a227;color:#000;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-weight:600;">Attiva</button><button onclick="document.getElementById('push-banner').remove()" style="background:transparent;color:#aaa;border:none;cursor:pointer;font-size:18px;">×</button>`;
-        document.body.appendChild(banner);
+        const overlay = document.createElement('div');
+        overlay.id = 'push-banner';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:99999;display:flex;align-items:center;justify-content:center;';
+        overlay.innerHTML = `
+          <div style="background:#1a1a2e;border:2px solid #c9a227;border-radius:16px;padding:36px 32px;max-width:360px;width:90%;text-align:center;color:#fff;">
+            <div style="font-size:48px;margin-bottom:16px;">🔔</div>
+            <div style="font-size:18px;font-weight:700;color:#c9a227;margin-bottom:12px;">Attiva le Notifiche</div>
+            <div style="font-size:14px;color:#ccc;line-height:1.6;margin-bottom:28px;">Per ricevere messaggi urgenti e comunicazioni dell'amministratore devi attivare le notifiche push.</div>
+            <button onclick="enablePushNotifications()" style="width:100%;background:linear-gradient(135deg,#a07818,#c9a227);color:#000;border:none;padding:14px;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;">Attiva Notifiche</button>
+          </div>`;
+        document.body.appendChild(overlay);
         window._oneSignalInstance = OneSignal;
         window._oneSignalSaveId = saveId;
       }

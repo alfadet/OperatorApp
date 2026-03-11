@@ -1,3 +1,5 @@
+importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
+
 const CACHE = 'adsecurity-v5';
 const STATIC = ['/', '/index.html', '/manifest.json', '/icon-192.png',
   '/libs/jspdf.umd.min.js', '/libs/jspdf.plugin.autotable.min.js', '/libs/xlsx.full.min.js'];

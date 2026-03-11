@@ -1609,48 +1609,63 @@ function loginAs(user) {
 
 async function initOneSignal() {
   try {
+    if (typeof Notification === 'undefined') return;
+    if (Notification.permission === 'granted') {
+      // già concesso: init silenzioso e salva id
+      _oneSignalInitSilent();
+      return;
+    }
+    if (Notification.permission === 'denied') return;
+    // permesso 'default': mostra modal subito
+    const overlay = document.createElement('div');
+    overlay.id = 'push-banner';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:99999;display:flex;align-items:center;justify-content:center;';
+    overlay.innerHTML = `
+      <div style="background:#1a1a2e;border:2px solid #c9a227;border-radius:16px;padding:36px 32px;max-width:360px;width:90%;text-align:center;color:#fff;">
+        <div style="font-size:48px;margin-bottom:16px;">🔔</div>
+        <div style="font-size:18px;font-weight:700;color:#c9a227;margin-bottom:12px;">Attiva le Notifiche</div>
+        <div style="font-size:14px;color:#ccc;line-height:1.6;margin-bottom:28px;">Per ricevere messaggi urgenti e comunicazioni dell'amministratore devi attivare le notifiche push.</div>
+        <button onclick="enablePushNotifications()" style="width:100%;background:linear-gradient(135deg,#a07818,#c9a227);color:#000;border:none;padding:14px;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;">Attiva Notifiche</button>
+      </div>`;
+    document.body.appendChild(overlay);
+  } catch(e) { console.log('OneSignal init error:', e.message); }
+}
+
+async function _oneSignalInitSilent() {
+  try {
     if (!window.OneSignalDeferred) return;
     const cfg = await apiFetch('/config');
     if (!cfg || !cfg.onesignal_app_id) return;
     window.OneSignalDeferred.push(async function(OneSignal) {
       await OneSignal.init({ appId: cfg.onesignal_app_id, notifyButton: { enable: false } });
-      const saveId = async () => {
-        const playerId = OneSignal.User.PushSubscription.id;
-        if (playerId) {
-          await apiFetch('/push-token', { method: 'POST', body: JSON.stringify({ player_id: playerId }) });
-          console.log('OneSignal: player_id salvato', playerId);
-          document.getElementById('push-banner')?.remove();
-        }
-      };
-      OneSignal.User.PushSubscription.addEventListener('change', saveId);
-      // Se già iscritto, salva subito
-      if (OneSignal.User.PushSubscription.id) { await saveId(); return; }
-      // Mostra modal bloccante se permesso non ancora dato
-      if (Notification.permission === 'default') {
-        const overlay = document.createElement('div');
-        overlay.id = 'push-banner';
-        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:99999;display:flex;align-items:center;justify-content:center;';
-        overlay.innerHTML = `
-          <div style="background:#1a1a2e;border:2px solid #c9a227;border-radius:16px;padding:36px 32px;max-width:360px;width:90%;text-align:center;color:#fff;">
-            <div style="font-size:48px;margin-bottom:16px;">🔔</div>
-            <div style="font-size:18px;font-weight:700;color:#c9a227;margin-bottom:12px;">Attiva le Notifiche</div>
-            <div style="font-size:14px;color:#ccc;line-height:1.6;margin-bottom:28px;">Per ricevere messaggi urgenti e comunicazioni dell'amministratore devi attivare le notifiche push.</div>
-            <button onclick="enablePushNotifications()" style="width:100%;background:linear-gradient(135deg,#a07818,#c9a227);color:#000;border:none;padding:14px;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;">Attiva Notifiche</button>
-          </div>`;
-        document.body.appendChild(overlay);
-        window._oneSignalInstance = OneSignal;
-        window._oneSignalSaveId = saveId;
+      const playerId = OneSignal.User.PushSubscription.id;
+      if (playerId) {
+        await apiFetch('/push-token', { method: 'POST', body: JSON.stringify({ player_id: playerId }) });
+        console.log('OneSignal: player_id salvato', playerId);
       }
     });
-  } catch(e) { console.log('OneSignal init error:', e.message); }
+  } catch(e) {}
 }
 
 async function enablePushNotifications() {
   try {
-    const OneSignal = window._oneSignalInstance;
-    if (!OneSignal) return;
-    const granted = await OneSignal.Notifications.requestPermission();
-    if (granted && window._oneSignalSaveId) await window._oneSignalSaveId();
+    document.getElementById('push-banner')?.remove();
+    if (!window.OneSignalDeferred) return;
+    const cfg = await apiFetch('/config');
+    if (!cfg || !cfg.onesignal_app_id) return;
+    window.OneSignalDeferred.push(async function(OneSignal) {
+      await OneSignal.init({ appId: cfg.onesignal_app_id, notifyButton: { enable: false } });
+      const granted = await OneSignal.Notifications.requestPermission();
+      console.log('OneSignal: permesso', granted);
+      if (granted) {
+        OneSignal.User.PushSubscription.addEventListener('change', async () => {
+          const pid = OneSignal.User.PushSubscription.id;
+          if (pid) await apiFetch('/push-token', { method: 'POST', body: JSON.stringify({ player_id: pid }) });
+        });
+        const pid = OneSignal.User.PushSubscription.id;
+        if (pid) await apiFetch('/push-token', { method: 'POST', body: JSON.stringify({ player_id: pid }) });
+      }
+    });
   } catch(e) { console.log('Push enable error:', e.message); }
 }
 

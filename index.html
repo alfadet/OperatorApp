@@ -6384,8 +6384,6 @@ function _caPrintAll(){
   const gRimb=tutti.reduce((s,a)=>s+a.importo_rimborsato,0);
   const gRes=gTot-gRimb;
   const pct=gTot>0?Math.round((gRimb/gTot)*100):0;
-
-  // Riepilogo per operatore
   const opSummary=ops.map(op=>{
     const opA=tutti.filter(a=>a.operatore_id===op.id);
     const t=opA.reduce((s,a)=>s+a.importo_totale,0);
@@ -6393,40 +6391,88 @@ function _caPrintAll(){
     return{op,t,r,res:t-r,count:opA.length,aperte:opA.filter(a=>_caGetState(a)!=='Saldato').length};
   }).filter(x=>x.count>0);
 
-  openModal(`<div style="max-height:85vh;overflow-y:auto">
-  <div class="modal-title" style="position:sticky;top:0;background:var(--bg2);z-index:1">
-    <span style="font-family:'Cinzel',serif;letter-spacing:2px">🖨 Riepilogo Generale Tutti gli Operatori</span>
-    <div style="display:flex;gap:8px;align-items:center"><button class="btn-sm btn-primary" onclick="window.print()">Stampa / PDF</button><span class="modal-close" onclick="closeModalDirect()">✕</span></div>
+  const win=window.open('','_blank','width=1100,height=800,scrollbars=yes,resizable=yes');
+  if(!win){showToast('Popup bloccato dal browser — abilita i popup','error');return;}
+  win.document.write(`<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8">
+  <title>Riepilogo Cassa Anticipi — Alfa Security</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Arial,sans-serif;font-size:12px;color:#111;background:#fff;padding:0}
+    .toolbar{display:flex;align-items:center;justify-content:space-between;padding:12px 24px;background:#1a1a1a;color:#fff;gap:12px;position:sticky;top:0;z-index:99}
+    .toolbar-title{font-size:13px;font-weight:700;letter-spacing:1px}
+    .btn-print{padding:8px 20px;background:#c9a227;border:none;border-radius:6px;color:#000;font-weight:700;font-size:13px;cursor:pointer}
+    .btn-print:hover{background:#e6b800}
+    .doc{padding:28px 32px;max-width:1050px;margin:0 auto}
+    .header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:18px;padding-bottom:12px;border-bottom:2px solid #333}
+    .header-title{font-size:22px;font-weight:700;letter-spacing:2px}
+    .header-sub{font-size:11px;color:#555;margin-top:3px}
+    .kpi-row{display:flex;gap:12px;margin-bottom:14px}
+    .kpi{flex:1;padding:12px;border:1px solid #ddd;border-radius:6px;text-align:center}
+    .kpi-label{font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+    .kpi-val{font-size:18px;font-weight:700;font-family:monospace}
+    .progress{height:7px;background:#e5e7eb;border-radius:4px;margin-bottom:20px;overflow:hidden}
+    .progress-bar{height:100%;border-radius:4px}
+    .section-title{font-weight:700;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;margin-top:20px;color:#333;border-left:3px solid #c9a227;padding-left:8px}
+    table{width:100%;border-collapse:collapse;margin-bottom:20px}
+    th{padding:7px 6px;text-align:left;border:1px solid #ccc;background:#f0f0f0;font-size:10px;text-transform:uppercase;letter-spacing:.5px}
+    td{padding:6px 6px;border:1px solid #ddd;font-size:11px;vertical-align:top}
+    tr.alt{background:#f8f8f8}
+    tr.total-row{background:#f0f0f0;font-weight:700}
+    tr.op-group{background:#fff8e8}
+    td.right,th.right{text-align:right}
+    td.center,th.center{text-align:center}
+    .mono{font-family:monospace}
+    .red{color:#b91c1c}
+    .green{color:#1a7a42}
+    .footer{font-size:9px;color:#aaa;margin-top:20px;padding-top:10px;border-top:1px solid #ddd}
+    @media print{
+      .toolbar{display:none!important}
+      body{padding:0}
+      .doc{padding:16px 18px;max-width:100%}
+      @page{margin:15mm;size:A4 landscape}
+      table{font-size:9px}
+      td,th{padding:4px 4px}
+      tr{page-break-inside:avoid}
+      .section-title{page-break-after:avoid}
+    }
+  </style></head><body>
+  <div class="toolbar">
+    <div class="toolbar-title">ALFA SECURITY — Riepilogo Cassa Anticipi</div>
+    <button class="btn-print" onclick="window.print()">🖨 Stampa / Salva PDF</button>
   </div>
-  <div id="ca-print-all-doc" style="padding:24px;background:#fff;color:#111;font-family:sans-serif">
-    <style>@media print{body>*:not(#modal-overlay){display:none!important}#modal-overlay{position:fixed;inset:0;background:#fff;z-index:99999}#modal-content{max-height:none!important;overflow:visible!important}.modal-title{display:none!important}}</style>
-    <div style="display:flex;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #333">
-      <div><div style="font-size:20px;font-weight:700;letter-spacing:2px">ALFA SECURITY</div><div style="font-size:12px;color:#555;margin-top:2px">RIEPILOGO GENERALE CASSA ANTICIPI</div></div>
-      <div style="text-align:right;font-size:11px;color:#555"><div>Data stampa: <strong>${oggi}</strong></div></div>
+  <div class="doc">
+    <div class="header">
+      <div><div class="header-title">ALFA SECURITY</div><div class="header-sub">RIEPILOGO GENERALE CASSA ANTICIPI</div></div>
+      <div style="text-align:right;font-size:11px;color:#555">Data stampa: <strong>${oggi}</strong></div>
     </div>
-    <div style="display:flex;gap:12px;margin-bottom:16px">
-      <div style="flex:1;padding:10px;border:1px solid #ddd;border-radius:5px;text-align:center"><div style="font-size:10px;color:#888;margin-bottom:3px">TOTALE ANTICIPATO</div><div style="font-size:17px;font-weight:700;font-family:monospace">${_caFmtAmt(gTot)}</div></div>
-      <div style="flex:1;padding:10px;border:1px solid #ddd;border-radius:5px;text-align:center"><div style="font-size:10px;color:#888;margin-bottom:3px">TOTALE RIMBORSATO</div><div style="font-size:17px;font-weight:700;font-family:monospace;color:#1a7a42">${_caFmtAmt(gRimb)}</div></div>
-      <div style="flex:1;padding:10px;border:1px solid #ddd;border-radius:5px;text-align:center"><div style="font-size:10px;color:#888;margin-bottom:3px">RESIDUO TOTALE</div><div style="font-size:17px;font-weight:700;font-family:monospace;color:${gRes>0?'#b91c1c':'#1a7a42'}">${_caFmtAmt(gRes)}</div></div>
+    <div class="kpi-row">
+      <div class="kpi"><div class="kpi-label">Totale Anticipato</div><div class="kpi-val">${_caFmtAmt(gTot)}</div></div>
+      <div class="kpi"><div class="kpi-label">Totale Rimborsato</div><div class="kpi-val green">${_caFmtAmt(gRimb)}</div></div>
+      <div class="kpi"><div class="kpi-label">Residuo da Rimborsare</div><div class="kpi-val ${gRes>0?'red':'green'}">${_caFmtAmt(gRes)}</div></div>
+      <div class="kpi"><div class="kpi-label">Pratiche Totali</div><div class="kpi-val">${tutti.length}</div></div>
+      <div class="kpi"><div class="kpi-label">Pratiche Aperte</div><div class="kpi-val ${tutti.filter(a=>_caGetState(a)!=='Saldato').length>0?'red':'green'}">${tutti.filter(a=>_caGetState(a)!=='Saldato').length}</div></div>
     </div>
-    <div style="height:7px;background:#e5e7eb;border-radius:4px;margin-bottom:20px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${pct>=100?'#1a7a42':'#d97706'};border-radius:4px"></div></div>
-    <div style="font-weight:700;font-size:11px;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Riepilogo per Operatore</div>
-    <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:20px">
-      <thead><tr style="background:#f5f5f5"><th style="padding:7px 5px;text-align:left;border:1px solid #ddd">Operatore</th><th style="padding:7px 5px;text-align:center;border:1px solid #ddd">Pratiche</th><th style="padding:7px 5px;text-align:center;border:1px solid #ddd">Aperte</th><th style="padding:7px 5px;text-align:right;border:1px solid #ddd">Anticipato</th><th style="padding:7px 5px;text-align:right;border:1px solid #ddd">Rimborsato</th><th style="padding:7px 5px;text-align:right;border:1px solid #ddd">Residuo</th><th style="padding:7px 5px;text-align:right;border:1px solid #ddd">%</th></tr></thead>
+    <div class="progress"><div class="progress-bar" style="width:${pct}%;background:${pct>=100?'#1a7a42':'#d97706'}"></div></div>
+
+    <div class="section-title">Riepilogo per Operatore</div>
+    <table>
+      <thead><tr><th>Operatore</th><th class="center">Pratiche</th><th class="center">Aperte</th><th class="right">Anticipato</th><th class="right">Rimborsato</th><th class="right">Residuo</th><th class="right">%</th></tr></thead>
       <tbody>
-        ${opSummary.map((x,i)=>{const p2=x.t>0?Math.round((x.r/x.t)*100):0;return`<tr style="background:${i%2===0?'#fff':'#fafafa'}"><td style="padding:6px 5px;border:1px solid #ddd;font-weight:600">${x.op.nome} ${x.op.cognome}</td><td style="padding:6px 5px;border:1px solid #ddd;text-align:center">${x.count}</td><td style="padding:6px 5px;border:1px solid #ddd;text-align:center;color:${x.aperte>0?'#b91c1c':'#1a7a42'}">${x.aperte}</td><td style="padding:6px 5px;border:1px solid #ddd;text-align:right;font-family:monospace">${_caFmtAmt(x.t)}</td><td style="padding:6px 5px;border:1px solid #ddd;text-align:right;font-family:monospace">${_caFmtAmt(x.r)}</td><td style="padding:6px 5px;border:1px solid #ddd;text-align:right;font-family:monospace;color:${x.res>0?'#b91c1c':'#1a7a42'}">${_caFmtAmt(x.res)}</td><td style="padding:6px 5px;border:1px solid #ddd;text-align:right">${p2}%</td></tr>`;}).join('')}
-        <tr style="background:#f5f5f5;font-weight:700"><td style="padding:7px 5px;border:1px solid #ddd">TOTALI</td><td style="padding:7px 5px;border:1px solid #ddd;text-align:center">${tutti.length}</td><td style="padding:7px 5px;border:1px solid #ddd;text-align:center">${tutti.filter(a=>_caGetState(a)!=='Saldato').length}</td><td style="padding:7px 5px;border:1px solid #ddd;text-align:right;font-family:monospace">${_caFmtAmt(gTot)}</td><td style="padding:7px 5px;border:1px solid #ddd;text-align:right;font-family:monospace">${_caFmtAmt(gRimb)}</td><td style="padding:7px 5px;border:1px solid #ddd;text-align:right;font-family:monospace;color:${gRes>0?'#b91c1c':'#1a7a42'}">${_caFmtAmt(gRes)}</td><td style="padding:7px 5px;border:1px solid #ddd;text-align:right">${pct}%</td></tr>
+        ${opSummary.map((x,i)=>{const p2=x.t>0?Math.round((x.r/x.t)*100):0;return`<tr class="${i%2===0?'':'alt'}"><td><strong>${x.op.nome} ${x.op.cognome}</strong></td><td class="center">${x.count}</td><td class="center ${x.aperte>0?'red':'green'}">${x.aperte}</td><td class="right mono">${_caFmtAmt(x.t)}</td><td class="right mono green">${_caFmtAmt(x.r)}</td><td class="right mono ${x.res>0?'red':'green'}">${_caFmtAmt(x.res)}</td><td class="right">${p2}%</td></tr>`;}).join('')}
+        <tr class="total-row"><td>TOTALI</td><td class="center">${tutti.length}</td><td class="center ${tutti.filter(a=>_caGetState(a)!=='Saldato').length>0?'red':'green'}">${tutti.filter(a=>_caGetState(a)!=='Saldato').length}</td><td class="right mono">${_caFmtAmt(gTot)}</td><td class="right mono green">${_caFmtAmt(gRimb)}</td><td class="right mono ${gRes>0?'red':'green'}">${_caFmtAmt(gRes)}</td><td class="right">${pct}%</td></tr>
       </tbody>
     </table>
-    <div style="page-break-before:always"></div>
-    <div style="font-weight:700;font-size:11px;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;margin-top:16px">Dettaglio Completo Tutte le Pratiche</div>
-    <table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:18px">
-      <thead><tr style="background:#f5f5f5"><th style="padding:5px 4px;text-align:left;border:1px solid #ddd">Operatore</th><th style="padding:5px 4px;text-align:left;border:1px solid #ddd">Data</th><th style="padding:5px 4px;text-align:left;border:1px solid #ddd">Voce</th><th style="padding:5px 4px;text-align:right;border:1px solid #ddd">Ant.</th><th style="padding:5px 4px;text-align:right;border:1px solid #ddd">Rimb.</th><th style="padding:5px 4px;text-align:right;border:1px solid #ddd">Res.</th><th style="padding:5px 4px;text-align:center;border:1px solid #ddd">Stato</th></tr></thead>
-      <tbody>${tutti.map((a,i)=>{const r2=a.importo_totale-a.importo_rimborsato;const vo=_caGetOp(a.operatore_id);return`<tr style="background:${i%2===0?'#fff':'#fafafa'}"><td style="padding:4px;border:1px solid #ddd">${vo.nome} ${vo.cognome}</td><td style="padding:4px;border:1px solid #ddd;white-space:nowrap">${_caFmt(a.data_spesa)}</td><td style="padding:4px;border:1px solid #ddd">${a.categoria}${a.descrizione_varie?' — '+a.descrizione_varie:''}</td><td style="padding:4px;border:1px solid #ddd;text-align:right;font-family:monospace">${_caFmtAmt(a.importo_totale)}</td><td style="padding:4px;border:1px solid #ddd;text-align:right;font-family:monospace">${_caFmtAmt(a.importo_rimborsato)}</td><td style="padding:4px;border:1px solid #ddd;text-align:right;font-family:monospace;color:${r2>0?'#b91c1c':'#1a7a42'}">${_caFmtAmt(r2)}</td><td style="padding:4px;border:1px solid #ddd;text-align:center">${_caGetState(a)}</td></tr>`;}).join('')}</tbody>
+
+    <div class="section-title" style="page-break-before:always">Dettaglio Completo — Tutte le Pratiche</div>
+    <table>
+      <thead><tr><th>Operatore</th><th>Data</th><th>Voce di Spesa</th><th class="right">Anticipato</th><th class="right">Rimborsato</th><th class="right">Residuo</th><th class="center">Stato</th></tr></thead>
+      <tbody>${tutti.map((a,i)=>{const r2=a.importo_totale-a.importo_rimborsato;const vo=_caGetOp(a.operatore_id);return`<tr class="${i%2===0?'':'alt'}"><td>${vo.nome} ${vo.cognome}</td><td style="white-space:nowrap">${_caFmt(a.data_spesa)}</td><td>${a.categoria}${a.descrizione_varie?' — '+a.descrizione_varie:''}</td><td class="right mono">${_caFmtAmt(a.importo_totale)}</td><td class="right mono">${_caFmtAmt(a.importo_rimborsato)}</td><td class="right mono ${r2>0?'red':'green'}">${_caFmtAmt(r2)}</td><td class="center">${_caGetState(a)}</td></tr>`;}).join('')}</tbody>
     </table>
-    <div style="font-size:9px;color:#aaa;margin-top:16px;padding-top:10px;border-top:1px solid #ddd">Generato il ${oggiTs} — Solo uso interno</div>
+
+    <div class="footer">Generato il ${oggiTs} — Solo uso interno — Alfa Security Group</div>
   </div>
-  </div>`);
+  </body></html>`);
+  win.document.close();
 }
 
 async function _caDeleteAllForOp(userId, nomeOp) {

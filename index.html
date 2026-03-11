@@ -1609,23 +1609,27 @@ function loginAs(user) {
 
 async function initOneSignal() {
   try {
-    if (!window.OneSignalDeferred) return;
+    if (!window.OneSignalDeferred) { console.log('OneSignal: SDK non caricato'); return; }
     const cfg = await apiFetch('/config');
-    if (!cfg || !cfg.onesignal_app_id) return;
+    if (!cfg || !cfg.onesignal_app_id) { console.log('OneSignal: app_id mancante'); return; }
     window.OneSignalDeferred.push(async function(OneSignal) {
       await OneSignal.init({
         appId: cfg.onesignal_app_id,
-        safari_web_id: cfg.safari_web_id || '',
-        notifyButton: { enable: false },
-        allowLocalhostAsSecureOrigin: false
+        notifyButton: { enable: false }
       });
-      await OneSignal.Notifications.requestPermission();
-      const playerId = await OneSignal.User.PushSubscription.id;
-      if (playerId) {
-        await apiFetch('/push-token', { method: 'POST', body: JSON.stringify({ player_id: playerId }) });
-      }
+      const saveId = async () => {
+        const playerId = OneSignal.User.PushSubscription.id;
+        if (playerId) {
+          await apiFetch('/push-token', { method: 'POST', body: JSON.stringify({ player_id: playerId }) });
+          console.log('OneSignal: player_id salvato', playerId);
+        }
+      };
+      OneSignal.User.PushSubscription.addEventListener('change', saveId);
+      const granted = await OneSignal.Notifications.requestPermission();
+      console.log('OneSignal: permesso', granted);
+      if (granted) await saveId();
     });
-  } catch(e) { console.log('OneSignal init skipped:', e.message); }
+  } catch(e) { console.log('OneSignal init error:', e.message); }
 }
 
 function doLogout() {

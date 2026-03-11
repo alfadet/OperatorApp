@@ -17,6 +17,7 @@
 <script src="libs/jspdf.plugin.autotable.min.js"></script>
 <script src="libs/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <style>
 :root {
   --gold: #c9a227;
@@ -1603,6 +1604,28 @@ function loginAs(user) {
     buildUserUI();
   }
   setTimeout(showPwaBanner, 2000);
+  setTimeout(initOneSignal, 3000);
+}
+
+async function initOneSignal() {
+  try {
+    if (!window.OneSignalDeferred) return;
+    const cfg = await apiFetch('/config');
+    if (!cfg || !cfg.onesignal_app_id) return;
+    window.OneSignalDeferred.push(async function(OneSignal) {
+      await OneSignal.init({
+        appId: cfg.onesignal_app_id,
+        safari_web_id: cfg.safari_web_id || '',
+        notifyButton: { enable: false },
+        allowLocalhostAsSecureOrigin: false
+      });
+      await OneSignal.Notifications.requestPermission();
+      const playerId = await OneSignal.User.PushSubscription.id;
+      if (playerId) {
+        await apiFetch('/push-token', { method: 'POST', body: JSON.stringify({ player_id: playerId }) });
+      }
+    });
+  } catch(e) { console.log('OneSignal init skipped:', e.message); }
 }
 
 function doLogout() {

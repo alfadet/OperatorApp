@@ -11,6 +11,12 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const JWT_SECRET = process.env.JWT_SECRET || 'alfasecurity_secret';
 const PORT = process.env.PORT || 3003;
 
+// ── ADD ONESIGNAL COLUMN IF MISSING ──────────────────────────────────────────
+pool.query(`DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='onesignal_player_id')
+  THEN ALTER TABLE users ADD COLUMN onesignal_player_id TEXT; END IF;
+END $$;`).catch(e => console.error('OneSignal column error:', e.message));
+
 // ── AUTO-CREATE VESTIARIO TABLES ──────────────────────────────────────────────
 pool.query(`
   CREATE TABLE IF NOT EXISTS security_vestiario (
@@ -260,6 +266,16 @@ app.post('/api/messages', auth, adminOnly, async (req, res) => {
       [id, testo, nome_file || null, mime_type || null, file_data || null, is_broadcast !== false, target_user_id || null]
     );
     res.json({ ...r.rows[0], read_by: [] });
+    // Push notification
+    const preview = (testo||'').substring(0, 80);
+    if (is_broadcast !== false && !target_user_id) {
+      const allUsers = await pool.query('SELECT onesignal_player_id FROM users WHERE is_admin=FALSE AND onesignal_player_id IS NOT NULL');
+      const ids = allUsers.rows.map(u => u.onesignal_player_id);
+      sendPush(ids, '📨 Nuovo messaggio', preview);
+    } else if (target_user_id) {
+      const ids = await getPushIds([target_user_id]);
+      sendPush(ids, '📨 Nuovo messaggio', preview);
+    }
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -853,6 +869,47 @@ app.delete('/api/cassa-anticipi/:id', auth, adminOnly, async (req, res) => {
 
 function _fmtAmt(n){return '€'+n.toFixed(2).replace('.',',');}
 
+// ── ONESIGNAL ─────────────────────────────────────────────────────────────────
+app.get('/api/config', (req, res) => {
+  res.json({ onesignal_app_id: process.env.ONESIGNAL_APP_ID || null });
+});
+
+app.post('/api/push-token', auth, async (req, res) => {
+  try {
+    const { player_id } = req.body;
+    await pool.query('UPDATE users SET onesignal_player_id=$1 WHERE id=$2', [player_id, req.user.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+async function sendPush(playerIds, title, message) {
+  const apiKey = process.env.ONESIGNAL_API_KEY;
+  const appId  = process.env.ONESIGNAL_APP_ID;
+  if (!apiKey || !appId || !playerIds || !playerIds.length) return;
+  try {
+    await fetch('https://api.onesignal.com/notifications', {
+      method: 'POST',
+      headers: { 'Authorization': `Basic ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        app_id: appId,
+        include_subscription_ids: playerIds,
+        headings: { en: title },
+        contents: { en: message },
+        url: 'https://alfasecurity.group'
+      })
+    });
+  } catch(e) { console.error('Push error:', e.message); }
+}
+
+async function getPushIds(userIds) {
+  if (!userIds || !userIds.length) return [];
+  const r = await pool.query(
+    `SELECT onesignal_player_id FROM users WHERE id=ANY($1) AND onesignal_player_id IS NOT NULL`,
+    [userIds]
+  );
+  return r.rows.map(r => r.onesignal_player_id);
+}
+
 // ── SECURITY VESTIARIO ────────────────────────────────────────────────────────
 app.get('/api/vestiario/mio', auth, async (req, res) => {
   try {
@@ -931,7 +988,13 @@ app.patch('/api/admin/vestiario/:id/stato', auth, adminOnly, async (req, res) =>
     const r = await pool.query(
       'UPDATE security_vestiario SET stato_richiesta=$1, motivazione_admin=$2 WHERE id=$3 RETURNING *',
       [stato_richiesta, motivazione_admin||null, req.params.id]);
-    res.json(r.rows[0]);
+    const row = r.rows[0];
+    if (row && row.operatore_id && (stato_richiesta === 'approvata' || stato_richiesta === 'non_approvata')) {
+      const ids = await getPushIds([row.operatore_id]);
+      const label = stato_richiesta === 'approvata' ? '✅ Approvata' : '❌ Non approvata';
+      await sendPush(ids, 'Security Vestiario', `Richiesta vestiario ${label}${motivazione_admin ? ': ' + motivazione_admin : ''}`);
+    }
+    res.json(row);
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 

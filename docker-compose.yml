@@ -15,6 +15,8 @@ services:
       - DATABASE_URL=postgresql://operatorapp:operatorapp2024@db:5432/operatorapp
       - JWT_SECRET=alfasecurity_jwt_2024_secret
       - PORT=3003
+      - ONESIGNAL_APP_ID=78d226f5-ebe0-42bb-9978-bf37b93760d9
+      - ONESIGNAL_API_KEY=os_v2_app_pdjcn5pl4bblxglyx433sn3a3g754fhm24vuk6ms4hgol4vowyrfh4pqlhyefkbbnw56fzbijnfgylzujnv27fohlt2633aotz24mda
     depends_on:
       - db
     restart: always

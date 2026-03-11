@@ -4958,35 +4958,65 @@ async function renderAdminRules(content) {
         <div class="card-title">📋 Log Accettazioni (${sortedLog.length} voci)</div>
         ${sortedLog.length === 0
           ? '<div class="empty-state"><div class="empty-icon">📋</div>Nessuna risposta registrata</div>'
-          : `<div class="table-wrap">
-            <table class="admin-exp-table">
-              <thead><tr>
-                <th>Data e Ora</th>
-                <th>Operatore</th>
-                <th>Email</th>
-                <th>Regola</th>
-                <th>Risposta</th>
-              </tr></thead>
-              <tbody>
-                ${sortedLog.map(l => {
-                  const decLabel = {accepted:'✅ Accettato', rejected:'❌ Non Accettato', viewed:'👁 Visionato'}[l.decision] || l.decision;
-                  const decColor = {accepted:'#2ecc71', rejected:'#e74c3c', viewed:'var(--gold)'}[l.decision] || 'var(--text)';
-                  const ts = l.timestamp || l.created_at;
-                  const ruleText = l.rule_text || l.ruleText || '';
-                  return `
-                  <tr>
-                    <td style="white-space:nowrap;font-family:'Cinzel',serif;font-size:10px;color:var(--gold)">
-                      ${new Date(ts).toLocaleString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'})}
-                    </td>
-                    <td style="font-weight:700">${l.user_name||l.userName}</td>
-                    <td style="font-size:11px;color:var(--text-muted)">${l.user_email||l.userEmail}</td>
-                    <td style="font-size:12px;max-width:220px;white-space:normal">${ruleText.substring(0,80)}${ruleText.length>80?'…':''}</td>
-                    <td style="font-weight:700;color:${decColor};white-space:nowrap">${decLabel}</td>
-                  </tr>`;
-                }).join('')}
-              </tbody>
-            </table>
-          </div>`}
+          : (() => {
+              // Raggruppa per nominativo mantenendo ordine cronologico del primo log
+              const grps = []; const seen = {};
+              sortedLog.forEach(l => {
+                const nome = l.user_name || l.userName || '—';
+                if (!seen[nome]) { seen[nome] = []; grps.push({nome, email: l.user_email||l.userEmail||'', items: seen[nome]}); }
+                seen[nome].push(l);
+              });
+              const decLabel = d => ({accepted:'✅ Accettato', rejected:'❌ Non Accettato', viewed:'👁 Visionato'}[d] || d);
+              const decColor = d => ({accepted:'#2ecc71', rejected:'#e74c3c', viewed:'var(--gold)'}[d] || 'var(--text)');
+              const decBg    = d => ({accepted:'rgba(46,204,113,0.08)', rejected:'rgba(231,76,60,0.08)', viewed:'rgba(201,162,39,0.08)'}[d] || '');
+              return grps.map(({nome, email, items}) => {
+                const nAcc = items.filter(l=>l.decision==='accepted').length;
+                const nRej = items.filter(l=>l.decision==='rejected').length;
+                const nView = items.filter(l=>l.decision==='viewed').length;
+                return `
+                <div style="margin-bottom:18px;border:1px solid var(--border);border-radius:12px;overflow:hidden">
+                  <div style="display:flex;align-items:center;gap:12px;padding:11px 16px;background:var(--bg3);border-bottom:1px solid var(--border)">
+                    <div style="width:34px;height:34px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#000;flex-shrink:0">${nome.split(' ').map(p=>p[0]||'').join('').substring(0,2).toUpperCase()}</div>
+                    <div style="flex:1">
+                      <div style="font-weight:700;font-size:13px">${nome}</div>
+                      <div style="font-size:11px;color:var(--text-muted)">${email}</div>
+                    </div>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap">
+                      <span style="font-size:11px;background:rgba(39,174,96,0.1);color:#2ecc71;padding:2px 9px;border-radius:10px;border:1px solid rgba(39,174,96,0.3)">✅ ${nAcc}</span>
+                      <span style="font-size:11px;background:rgba(231,76,60,0.1);color:#e74c3c;padding:2px 9px;border-radius:10px;border:1px solid rgba(231,76,60,0.3)">❌ ${nRej}</span>
+                      <span style="font-size:11px;background:rgba(201,162,39,0.1);color:var(--gold);padding:2px 9px;border-radius:10px;border:1px solid var(--border-gold)">👁 ${nView}</span>
+                    </div>
+                  </div>
+                  <div class="table-wrap" style="margin:0">
+                    <table class="admin-exp-table" style="margin:0">
+                      <thead><tr>
+                        <th style="width:140px">Data e Ora</th>
+                        <th>Regola</th>
+                        <th style="width:140px">Risposta</th>
+                      </tr></thead>
+                      <tbody>
+                        ${items.map(l => {
+                          const ts = l.timestamp || l.created_at;
+                          const rule = rules.find(r => r.id === l.rule_id);
+                          const ruleTitle = rule?.title || l.rule_text?.substring(0,50) || '—';
+                          const rulePreview = rule?.text || l.rule_text || '';
+                          return `<tr style="background:${decBg(l.decision)}">
+                            <td style="white-space:nowrap;font-size:10px;color:var(--gold);font-family:'Cinzel',serif">
+                              ${new Date(ts).toLocaleString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}
+                            </td>
+                            <td>
+                              <div style="font-weight:600;font-size:12px;margin-bottom:2px">📋 ${ruleTitle}</div>
+                              ${rulePreview?`<div style="font-size:10px;color:var(--text-muted)">${rulePreview.substring(0,80)}${rulePreview.length>80?'…':''}</div>`:''}
+                            </td>
+                            <td style="font-weight:700;color:${decColor(l.decision)};white-space:nowrap">${decLabel(l.decision)}</td>
+                          </tr>`;
+                        }).join('')}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>`;
+              }).join('');
+            })()}
       </div>
     `;
   } catch(e) { content.innerHTML = '<div class="empty-state">Errore caricamento regole</div>'; }

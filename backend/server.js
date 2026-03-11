@@ -803,6 +803,15 @@ app.patch('/api/cassa-anticipi/:id/notifica-letta', auth, async (req, res) => {
   } catch(e){ res.status(500).json({error:e.message}); }
 });
 
+app.delete('/api/cassa-anticipi/by-operatore/:userId', auth, adminOnly, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM ca_rimborsi WHERE anticipo_id IN (SELECT id FROM cassa_anticipi WHERE operatore_id=$1)',[req.params.userId]);
+    await pool.query('DELETE FROM ca_log WHERE anticipo_id IN (SELECT id FROM cassa_anticipi WHERE operatore_id=$1)',[req.params.userId]);
+    await pool.query('DELETE FROM cassa_anticipi WHERE operatore_id=$1',[req.params.userId]);
+    res.json({ok:true});
+  } catch(e){ res.status(500).json({error:e.message}); }
+});
+
 app.delete('/api/cassa-anticipi/:id', auth, adminOnly, async (req, res) => {
   try { await pool.query('DELETE FROM cassa_anticipi WHERE id=$1',[req.params.id]); res.json({ok:true}); }
   catch(e){ res.status(500).json({error:e.message}); }

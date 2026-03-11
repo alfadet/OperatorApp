@@ -5587,15 +5587,28 @@ function ammDetRimuovi(tipo, idx) {
   ammDetRender(tipo);
 }
 
-function ammDetConferma(tipo) {
+function ammMostraDettagliSottoCampo(tipo) {
+  const lista = tipo === 'societa' ? _ammDettagliSocieta : _ammDettagliCostiVari;
+  const el = document.getElementById(tipo === 'societa' ? 'amm-soc-items' : 'amm-cv-items');
+  if (!el) return;
+  el.innerHTML = lista.length === 0 ? '' : lista.map(v =>
+    `<div style="display:flex;justify-content:space-between;padding:3px 8px;font-size:11px;color:var(--text-muted);border-left:2px solid rgba(201,162,39,0.3);margin-top:3px">
+      <span>${v.descrizione}</span>
+      <span style="color:var(--gold);font-family:monospace;flex-shrink:0;margin-left:8px">€ ${parseFloat(v.importo).toFixed(2).replace('.',',')}</span>
+    </div>`
+  ).join('');
+}
+
+async function ammDetConferma(tipo) {
   const lista = tipo === 'societa' ? _ammDettagliSocieta : _ammDettagliCostiVari;
   const tot = lista.reduce((s,v)=>s+(parseFloat(v.importo)||0),0);
   const inputId = tipo === 'societa' ? 'amm-societa' : 'amm-costi-vari';
   const el = document.getElementById(inputId);
   if (el) el.value = tot.toFixed(2);
   document.getElementById('amm-modal-dettaglio')?.remove();
+  ammMostraDettagliSottoCampo(tipo);
   ammCalcola();
-  ammSalva();
+  await ammSalva();
 }
 
 async function renderAdminAmministrazione(content) {
@@ -5661,7 +5674,7 @@ async function renderAdminAmministrazione(content) {
       <div class="amm-section-title">📤 Costi</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:8px">
         <div class="amm-field"><div class="amm-label">👷 Paghe Operatori (€)</div><input id="amm-paghe-op" type="number" class="amm-inp" placeholder="0,00" step="0.01" oninput="ammCalcola()"></div>
-        <div class="amm-field"><div class="amm-label">👷 Paghe Operatori B (€)</div><input id="amm-paghe-op-b" type="number" class="amm-inp" placeholder="0,00" step="0.01" oninput="ammCalcola()"></div>
+        <div class="amm-field"><div class="amm-label">🏆 Premio Operatori (€)</div><input id="amm-paghe-op-b" type="number" class="amm-inp" placeholder="0,00" step="0.01" oninput="ammCalcola()"></div>
         <div class="amm-field"><div class="amm-label">🏛 Tasse (€)</div><input id="amm-tax" type="number" class="amm-inp" placeholder="0,00" step="0.01" oninput="ammCalcola()"></div>
         <div class="amm-field"><div class="amm-label">📊 Amm. Paghe (€)</div><input id="amm-amm-paghe" type="number" class="amm-inp" placeholder="0,00" step="0.01" oninput="ammCalcola()"></div>
         <div class="amm-field"><div class="amm-label">🛡 Manager Security (€)</div><input id="amm-manager" type="number" class="amm-inp" placeholder="0,00" step="0.01" oninput="ammCalcola()"></div>
@@ -5672,6 +5685,7 @@ async function renderAdminAmministrazione(content) {
             <input id="amm-societa" type="number" class="amm-inp" placeholder="0,00" readonly style="flex:1;opacity:.7">
             <button class="btn btn-secondary" style="white-space:nowrap;height:46px;padding:0 14px" onclick="ammApriDettaglio('societa')">+ Dettaglio</button>
           </div>
+          <div id="amm-soc-items" style="margin-top:2px"></div>
         </div>
         <div class="amm-field">
           <div class="amm-label">📦 Costi Vari (€)</div>
@@ -5679,6 +5693,7 @@ async function renderAdminAmministrazione(content) {
             <input id="amm-costi-vari" type="number" class="amm-inp" placeholder="0,00" readonly style="flex:1;opacity:.7">
             <button class="btn btn-secondary" style="white-space:nowrap;height:46px;padding:0 14px" onclick="ammApriDettaglio('costi-vari')">+ Dettaglio</button>
           </div>
+          <div id="amm-cv-items" style="margin-top:2px"></div>
         </div>
       </div>
 
@@ -5781,6 +5796,8 @@ async function ammLoad() {
     });
     _ammDettagliSocieta = d?.societa_varie_dettaglio ? JSON.parse(d.societa_varie_dettaglio) : [];
     _ammDettagliCostiVari = d?.costi_vari_dettaglio ? JSON.parse(d.costi_vari_dettaglio) : [];
+    ammMostraDettagliSottoCampo('societa');
+    ammMostraDettagliSottoCampo('costi-vari');
     ammCalcola();
     await ammLoadAnnuale(anno);
   } catch(e) { showToast('Errore caricamento dati','error'); }
@@ -5882,7 +5899,7 @@ function ammRenderCharts(rows, anno) {
   const row = rows.find(r=>r.mese===mese) || rows[0];
   // Chart 1: Pie - composizione costi
   if (c1) {
-    const allCostiLabels = ['Paghe Op','Paghe Op B','Tasse','Amm.Paghe','Manager','Vestiario','Soc.Varie','Costi Vari'];
+    const allCostiLabels = ['Paghe Op','Premio Op','Tasse','Amm.Paghe','Manager','Vestiario','Soc.Varie','Costi Vari'];
     const allCostiValues = [parseFloat(row.costo_paghe_op)||0,parseFloat(row.costo_paghe_op_b)||0,parseFloat(row.costo_tax)||0,parseFloat(row.costo_amm_paghe)||0,parseFloat(row.costo_manager_security)||0,parseFloat(row.costo_vestiario)||0,parseFloat(row.costo_societa_varie)||0,parseFloat(row.costi_vari)||0];
     const costiLabels2 = allCostiLabels.filter((_,i)=>allCostiValues[i]>0);
     const costiValues2 = allCostiValues.filter(v=>v>0);
@@ -5973,7 +5990,7 @@ async function ammEsportaPDF() {
   ];
   const costiRows = [
     ['Paghe Operatori',fmt(parseFloat(d.costo_paghe_op)||0)],
-    ['Paghe Operatori B',fmt(parseFloat(d.costo_paghe_op_b)||0)],
+    ['Premio Operatori',fmt(parseFloat(d.costo_paghe_op_b)||0)],
     ['Tasse',fmt(parseFloat(d.costo_tax)||0)],
     ['Amm. Paghe',fmt(parseFloat(d.costo_amm_paghe)||0)],
     ['Manager Security',fmt(parseFloat(d.costo_manager_security)||0)],
@@ -6412,6 +6429,15 @@ function _caPrintAll(){
   </div>`);
 }
 
+async function _caDeleteAllForOp(userId, nomeOp) {
+  if (!confirm(`Eliminare TUTTE le spese di ${nomeOp}?\nQuesta azione è irreversibile.`)) return;
+  try {
+    await apiFetch('/cassa-anticipi/by-operatore/'+userId, {method:'DELETE'});
+    showToast('Spese di '+nomeOp+' eliminate');
+    renderAdminCassaAnticpi(document.getElementById('content'));
+  } catch(e) { showToast('Errore eliminazione','error'); }
+}
+
 async function renderAdminCassaAnticpi(content){
   _caInit();
   const c=content||document.getElementById('content');
@@ -6517,30 +6543,56 @@ async function renderAdminCassaAnticpi(content){
           </tr></thead>
           <tbody>
             ${filtered.length===0?`<tr><td colspan="10" style="padding:36px;text-align:center;color:var(--text-muted)">Nessuna pratica trovata</td></tr>`:
-            filtered.map((a,idx)=>{
-              const op=_caGetOp(a.operatore_id);
-              const stato=_caGetState(a);
-              const res=a.importo_totale-a.importo_rimborsato;
-              const ci=_caCat(a.categoria);
-              const pct=a.importo_totale>0?Math.round((a.importo_rimborsato/a.importo_totale)*100):0;
-              const exp=window._CA.expandedId===a.id;
-              return`<tr class="ca-row" style="border-top:1px solid var(--border);border-left:3px solid ${ci.border};cursor:pointer" onclick="_caToggle('${a.id}')">
-                <td style="padding:11px 11px;font-size:11px;color:var(--text-muted)">${idx+1}</td>
-                <td style="padding:11px 11px"><div style="display:flex;align-items:center;gap:8px"><div style="width:29px;height:29px;border-radius:50%;background:${_caAvBg(op.id||'')};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10px;color:#fff;flex-shrink:0">${_caInit2(op)}</div><div><div style="font-weight:600;font-size:12px;white-space:nowrap">${op.nome||''} ${op.cognome||''}</div></div></div></td>
-                <td style="padding:11px 11px"><div style="display:flex;align-items:center;gap:6px"><span style="font-size:15px">${ci.icon}</span><div><div style="font-weight:600;font-size:12px">${a.categoria}</div>${a.descrizione_varie?`<div style="font-size:10px;color:#f59e0b;font-style:italic">${a.descrizione_varie}</div>`:''}</div></div></td>
-                <td style="padding:11px 11px;font-size:11px;color:var(--text-muted);white-space:nowrap">${_caFmt(a.data_spesa)}</td>
-                <td style="padding:11px 11px;text-align:right;font-family:monospace;font-size:12px;font-weight:700;color:#f59e0b;white-space:nowrap">${_caFmtAmt(a.importo_totale)}</td>
-                <td style="padding:11px 11px" onclick="event.stopPropagation()"><div style="height:5px;background:var(--bg4);border-radius:3px;overflow:hidden;margin-bottom:3px"><div style="height:100%;width:${pct}%;background:${pct>=100?'#10b981':'#f59e0b'};border-radius:3px"></div></div><div style="font-size:10px;color:var(--text-muted);font-family:monospace">${_caFmtAmt(a.importo_rimborsato)} / ${_caFmtAmt(a.importo_totale)}</div></td>
-                <td style="padding:11px 11px;text-align:right;font-family:monospace;font-size:12px;font-weight:700;color:${res>0?'#ef4444':'#10b981'};white-space:nowrap">${_caFmtAmt(res)}</td>
-                <td style="padding:11px 11px;text-align:center">${_caBadge(stato)}</td>
-                <td style="padding:11px 11px;text-align:center;position:relative">${_caBell(a.notifica)}</td>
-                <td style="padding:11px 11px;text-align:center"><div style="display:flex;gap:5px;justify-content:center">
-                  <button onclick="event.stopPropagation();_caOpenModal('${a.id}')" style="padding:4px 9px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:6px;color:var(--text-muted);cursor:pointer;font-size:11px" onmouseover="this.style.borderColor='rgba(201,162,39,0.4)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">✏️</button>
-                  <button onclick="event.stopPropagation();_caToggle('${a.id}')" style="padding:4px 9px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:6px;color:var(--text-muted);cursor:pointer;font-size:11px">${exp?'▲':'▼'}</button>
-                </div></td>
-              </tr>
-              ${exp?`<tr style="border-left:3px solid ${ci.border}"><td colspan="10" style="padding:0;background:rgba(255,255,255,0.012)">${_caDetailHtml(a)}</td></tr>`:''}`;
-            }).join('')}
+            (()=>{
+              const grps=[]; const seen={};
+              filtered.forEach(a=>{if(!seen[a.operatore_id]){seen[a.operatore_id]=[];grps.push({opId:a.operatore_id,items:seen[a.operatore_id]});}seen[a.operatore_id].push(a);});
+              let gi=0;
+              return grps.map(({opId,items})=>{
+                const gOp=_caGetOp(opId);
+                const gT=items.reduce((s,a)=>s+a.importo_totale,0);
+                const gR=items.reduce((s,a)=>s+a.importo_rimborsato,0);
+                const gRes=gT-gR;
+                const opNome=`${gOp.nome||''} ${gOp.cognome||''}`.trim();
+                const hdr=`<tr style="background:rgba(201,162,39,0.07);border-top:2px solid rgba(201,162,39,0.3)">
+                  <td colspan="5" style="padding:8px 11px">
+                    <div style="display:flex;align-items:center;gap:9px">
+                      <div style="width:28px;height:28px;border-radius:50%;background:${_caAvBg(opId)};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10px;color:#fff;flex-shrink:0">${_caInit2(gOp)}</div>
+                      <span style="font-weight:700;font-size:13px;color:var(--gold)">${opNome}</span>
+                      <span style="font-size:11px;color:var(--text-muted);font-family:monospace">Tot: <strong style="color:#f59e0b">${_caFmtAmt(gT)}</strong> | Rimb: <strong style="color:#10b981">${_caFmtAmt(gR)}</strong> | Res: <strong style="color:${gRes>0?'#ef4444':'#10b981'}">${_caFmtAmt(gRes)}</strong></span>
+                    </div>
+                  </td>
+                  <td colspan="5" style="padding:8px 11px;text-align:right">
+                    <button onclick="event.stopPropagation();_caDeleteAllForOp('${opId}','${opNome.replace(/'/g,"\\'")}')" style="padding:5px 12px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.35);border-radius:7px;color:#ef4444;cursor:pointer;font-size:11px;font-weight:600" onmouseover="this.style.background='rgba(239,68,68,0.2)'" onmouseout="this.style.background='rgba(239,68,68,0.1)'">🗑 Cancella tutte</button>
+                  </td>
+                </tr>`;
+                const rows=items.map(a=>{
+                  gi++;
+                  const op=_caGetOp(a.operatore_id);
+                  const stato=_caGetState(a);
+                  const res=a.importo_totale-a.importo_rimborsato;
+                  const ci=_caCat(a.categoria);
+                  const pct=a.importo_totale>0?Math.round((a.importo_rimborsato/a.importo_totale)*100):0;
+                  const exp=window._CA.expandedId===a.id;
+                  return`<tr class="ca-row" style="border-top:1px solid var(--border);border-left:3px solid ${ci.border};cursor:pointer" onclick="_caToggle('${a.id}')">
+                    <td style="padding:11px 11px;font-size:11px;color:var(--text-muted)">${gi}</td>
+                    <td style="padding:11px 11px"><div style="display:flex;align-items:center;gap:8px"><div style="width:29px;height:29px;border-radius:50%;background:${_caAvBg(op.id||'')};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10px;color:#fff;flex-shrink:0">${_caInit2(op)}</div><div><div style="font-weight:600;font-size:12px;white-space:nowrap">${op.nome||''} ${op.cognome||''}</div></div></div></td>
+                    <td style="padding:11px 11px"><div style="display:flex;align-items:center;gap:6px"><span style="font-size:15px">${ci.icon}</span><div><div style="font-weight:600;font-size:12px">${a.categoria}</div>${a.descrizione_varie?`<div style="font-size:10px;color:#f59e0b;font-style:italic">${a.descrizione_varie}</div>`:''}</div></div></td>
+                    <td style="padding:11px 11px;font-size:11px;color:var(--text-muted);white-space:nowrap">${_caFmt(a.data_spesa)}</td>
+                    <td style="padding:11px 11px;text-align:right;font-family:monospace;font-size:12px;font-weight:700;color:#f59e0b;white-space:nowrap">${_caFmtAmt(a.importo_totale)}</td>
+                    <td style="padding:11px 11px" onclick="event.stopPropagation()"><div style="height:5px;background:var(--bg4);border-radius:3px;overflow:hidden;margin-bottom:3px"><div style="height:100%;width:${pct}%;background:${pct>=100?'#10b981':'#f59e0b'};border-radius:3px"></div></div><div style="font-size:10px;color:var(--text-muted);font-family:monospace">${_caFmtAmt(a.importo_rimborsato)} / ${_caFmtAmt(a.importo_totale)}</div></td>
+                    <td style="padding:11px 11px;text-align:right;font-family:monospace;font-size:12px;font-weight:700;color:${res>0?'#ef4444':'#10b981'};white-space:nowrap">${_caFmtAmt(res)}</td>
+                    <td style="padding:11px 11px;text-align:center">${_caBadge(stato)}</td>
+                    <td style="padding:11px 11px;text-align:center;position:relative">${_caBell(a.notifica)}</td>
+                    <td style="padding:11px 11px;text-align:center"><div style="display:flex;gap:5px;justify-content:center">
+                      <button onclick="event.stopPropagation();_caOpenModal('${a.id}')" style="padding:4px 9px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:6px;color:var(--text-muted);cursor:pointer;font-size:11px" onmouseover="this.style.borderColor='rgba(201,162,39,0.4)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">✏️</button>
+                      <button onclick="event.stopPropagation();_caToggle('${a.id}')" style="padding:4px 9px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:6px;color:var(--text-muted);cursor:pointer;font-size:11px">${exp?'▲':'▼'}</button>
+                    </div></td>
+                  </tr>
+                  ${exp?`<tr style="border-left:3px solid ${ci.border}"><td colspan="10" style="padding:0;background:rgba(255,255,255,0.012)">${_caDetailHtml(a)}</td></tr>`:''}`;
+                }).join('');
+                return hdr+rows;
+              }).join('');
+            })()}
           </tbody>
         </table>
       </div>

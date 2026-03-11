@@ -81,7 +81,7 @@ app.post('/api/auth/login', async (req, res) => {
       { id: user.id, email: user.email, is_admin: user.is_admin, nome: user.nome, cognome: user.cognome },
       JWT_SECRET, { expiresIn: '24h' }
     );
-    res.json({ token, user: { id: user.id, email: user.email, is_admin: user.is_admin, nome: user.nome, cognome: user.cognome } });
+    res.json({ token, user: { id: user.id, email: user.email, is_admin: user.is_admin, nome: user.nome, cognome: user.cognome, has_push: !!user.onesignal_player_id } });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -888,9 +888,10 @@ app.post('/api/push-token', auth, async (req, res) => {
 async function sendPush(playerIds, title, message) {
   const apiKey = process.env.ONESIGNAL_API_KEY;
   const appId  = process.env.ONESIGNAL_APP_ID;
-  if (!apiKey || !appId || !playerIds || !playerIds.length) return;
+  if (!apiKey || !appId || !playerIds || !playerIds.length) { console.log('Push skip: missing config or no ids'); return; }
   try {
-    await fetch('https://api.onesignal.com/notifications', {
+    console.log('Push sending to:', playerIds, 'title:', title);
+    const resp = await fetch('https://api.onesignal.com/notifications', {
       method: 'POST',
       headers: { 'Authorization': `Basic ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -901,6 +902,8 @@ async function sendPush(playerIds, title, message) {
         url: 'https://alfasecurity.group'
       })
     });
+    const data = await resp.json();
+    console.log('Push response:', JSON.stringify(data));
   } catch(e) { console.error('Push error:', e.message); }
 }
 

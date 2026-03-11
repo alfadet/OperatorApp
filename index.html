@@ -1637,7 +1637,7 @@ async function _oneSignalInitSilent() {
     const cfg = await apiFetch('/config');
     if (!cfg || !cfg.onesignal_app_id) return;
     window.OneSignalDeferred.push(async function(OneSignal) {
-      await OneSignal.init({ appId: cfg.onesignal_app_id, notifyButton: { enable: false } });
+      await OneSignal.init({ appId: cfg.onesignal_app_id, notifyButton: { enable: false }, serviceWorkerPath: '/sw.js', serviceWorkerUpdaterPath: '/sw.js' });
       const playerId = OneSignal.User.PushSubscription.id;
       if (playerId) {
         await apiFetch('/push-token', { method: 'POST', body: JSON.stringify({ player_id: playerId }) });
@@ -1659,7 +1659,7 @@ async function enablePushNotifications() {
     const cfg = await apiFetch('/config');
     if (!cfg || !cfg.onesignal_app_id) return;
     window.OneSignalDeferred.push(async function(OneSignal) {
-      await OneSignal.init({ appId: cfg.onesignal_app_id, notifyButton: { enable: false } });
+      await OneSignal.init({ appId: cfg.onesignal_app_id, notifyButton: { enable: false }, serviceWorkerPath: '/sw.js', serviceWorkerUpdaterPath: '/sw.js' });
       // Aspetta che la subscription sia pronta
       await new Promise(r => setTimeout(r, 2000));
       const pid = OneSignal.User.PushSubscription.id;

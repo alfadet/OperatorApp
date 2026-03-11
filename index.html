@@ -1658,6 +1658,9 @@ function buildAdminUI() {
     <div class="nav-item" onclick="showAdminPage('gestioneutenti',this)" id="nav-gestioneutenti">
       <span class="nav-icon">🔐</span> Gestione Utenti
     </div>
+    <div class="nav-item" onclick="showAdminPage('vestiario',this)" id="nav-vestiario">
+      <span class="nav-icon">👔</span> Security Vestiario
+    </div>
     <div class="nav-divider"></div>
     <div class="nav-qlinks-label">Accesso Rapido</div>
     <a class="nav-qlink ql-quest" href="https://form.jotform.com/212652413395050" target="_blank" rel="noopener">
@@ -1699,6 +1702,7 @@ function showAdminPage(page, el) {
   else if(page==='gestioneutenti') renderAdminGestioneUtenti(content, '');
   else if(page==='amministrazione') renderAdminAmministrazione(content);
   else if(page==='cassaanticpi') renderAdminCassaAnticpi(content);
+  else if(page==='vestiario') renderAdminVestiario(content);
   else renderAdminComms(content);
 }
 
@@ -2519,6 +2523,7 @@ async function buildUserUI() {
       ${rulesPending>0?`<span class="nav-badge">${rulesPending}</span>`:''}
     </div>
     <div class="nav-item" onclick="showUserPage('notes',this)"><span class="nav-icon">📝</span> Note</div>
+    <div class="nav-item" onclick="showUserPage('vestiario',this)"><span class="nav-icon">👔</span> Abbigliamento Security</div>
   `;
   showUserPage('dashboard', sidebar.querySelector('.nav-item'));
 }
@@ -2546,6 +2551,7 @@ function showUserPage(page, el) {
   else if(page==='info') renderUserInfo(content);
   else if(page==='rules') renderUserRules(content);
   else if(page==='notes') renderUserNotes(content);
+  else if(page==='vestiario') renderUserVestiario(content);
 }
 
 async function userDismissCA(id) {
@@ -6744,6 +6750,386 @@ function toggleAppTheme() {
   if (pill)  { if(isLight) pill.classList.add('on'); else pill.classList.remove('on'); }
   if (label) label.textContent = isLight ? 'Tema Scuro' : 'Tema Chiaro';
   try { localStorage.setItem('alfa_theme', isLight ? 'light' : 'dark'); } catch(e){}
+}
+
+// ══ SECURITY VESTIARIO ═══════════════════════════════════════════════════════
+
+window._VESTF = { foto: [] };
+window._VESA  = { tab:'richieste', search:'', stato:'tutti', data:[], mag:[] };
+
+async function renderUserVestiario(content) {
+  content.innerHTML = `<div style="padding:60px;text-align:center;color:var(--text-muted)"><div style="font-size:28px;margin-bottom:10px">👔</div>Caricamento...</div>`;
+  let scheda = null;
+  try { scheda = await apiFetch('/vestiario/mio'); } catch(e) {}
+  window._VESTF.foto = [];
+  if (scheda?.foto1) window._VESTF.foto.push({data:scheda.foto1});
+  if (scheda?.foto2) window._VESTF.foto.push({data:scheda.foto2});
+  if (scheda?.foto3) window._VESTF.foto.push({data:scheda.foto3});
+
+  const TAGLIE = ['XS','S','M','L','XL','XXL','XXXL'];
+  const tagliOpts = sel => TAGLIE.map(t=>`<option value="${t}" ${sel===t?'selected':''}>${t}</option>`).join('');
+  const siNo = (id, val) => `<div style="display:flex;gap:7px">
+    <button type="button" onclick="_vestToggle('${id}','SI')" id="${id}_SI" class="vest-toggle ${val==='SI'?'on':''}">SI</button>
+    <button type="button" onclick="_vestToggle('${id}','NO')" id="${id}_NO" class="vest-toggle ${val==='NO'?'on':''}">NO</button>
+  </div>`;
+  const CAPI = [{key:'giacca',icon:'🧥',label:'Giacca Security'},{key:'maglietta',icon:'👕',label:'Maglietta Security'},{key:'pantaloni',icon:'👖',label:'Pantaloni Security'},{key:'felpa',icon:'🧤',label:'Felpa Security'}];
+  const STATI = {in_valutazione:{label:'In Valutazione',color:'#f59e0b',bg:'rgba(245,158,11,0.1)',border:'rgba(245,158,11,0.3)',icon:'⏳'},approvata:{label:'Approvata',color:'#10b981',bg:'rgba(16,185,129,0.1)',border:'rgba(16,185,129,0.3)',icon:'✅'},non_approvata:{label:'Non Approvata',color:'#ef4444',bg:'rgba(239,68,68,0.1)',border:'rgba(239,68,68,0.3)',icon:'❌'}};
+
+  const statoHtml = scheda?.stato_richiesta ? (() => {
+    const s = STATI[scheda.stato_richiesta] || STATI.in_valutazione;
+    return `<div class="card" style="border-color:${s.border};margin-bottom:20px;background:${s.bg}">
+      <div style="display:flex;align-items:flex-start;gap:14px">
+        <div style="font-size:30px">${s.icon}</div>
+        <div style="flex:1">
+          <div style="font-size:10px;letter-spacing:1.5px;color:var(--text-muted);text-transform:uppercase;margin-bottom:5px">Stato Richiesta Sostituzione</div>
+          <div style="font-size:17px;font-weight:700;color:${s.color}">${s.label}</div>
+          ${scheda.richiesta_capo?`<div style="font-size:12px;color:var(--text-muted);margin-top:4px">Capo: <strong>${scheda.richiesta_capo}</strong> — Motivo: ${scheda.richiesta_motivo||'—'}${scheda.richiesta_altro?' ('+scheda.richiesta_altro+')':''}</div>`:''}
+          ${scheda.stato_richiesta==='non_approvata'&&scheda.motivazione_admin?`<div style="margin-top:10px;padding:9px 13px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:9px;font-size:12px"><strong>Motivazione admin:</strong> ${scheda.motivazione_admin}</div>`:''}
+        </div>
+      </div>
+    </div>`;
+  })() : '';
+
+  content.innerHTML = `
+  <style>
+    .vest-toggle{padding:7px 18px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg3);color:var(--text-muted);cursor:pointer;font-size:12px;font-weight:600;transition:all .15s}
+    .vest-toggle.on{background:rgba(201,162,39,0.15);border-color:var(--gold);color:var(--gold)}
+    .vest-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:22px;margin-bottom:14px}
+    .vest-card-title{display:flex;align-items:center;gap:10px;font-family:'Cinzel',serif;font-size:13px;color:var(--gold);letter-spacing:1px;margin-bottom:18px;padding-bottom:10px;border-bottom:1px solid rgba(201,162,39,0.15)}
+    .vest-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;align-items:end}
+    .vest-lbl{font-size:10px;letter-spacing:1.5px;color:var(--text-muted);text-transform:uppercase;margin-bottom:7px;font-weight:600}
+    .vest-sel{width:100%;padding:10px 14px;background:var(--bg3);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;outline:none;transition:border-color .2s}
+    .vest-sel:focus{border-color:var(--gold)}
+    .vest-foto-wrap{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .vest-foto-item{position:relative;width:82px;height:82px;border-radius:9px;overflow:hidden;border:1px solid var(--border)}
+    .vest-foto-item img{width:100%;height:100%;object-fit:cover}
+    .vest-foto-del{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,0.72);border:none;color:#fff;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;line-height:1}
+  </style>
+  <div style="padding:20px 24px;max-width:820px;margin:0 auto">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:22px">
+      <div style="width:50px;height:50px;border-radius:14px;background:rgba(201,162,39,0.1);border:1px solid rgba(201,162,39,0.3);display:flex;align-items:center;justify-content:center;font-size:26px">👔</div>
+      <div><div style="font-family:'Cinzel',serif;font-size:16px;font-weight:700;color:var(--gold);letter-spacing:2px">Abbigliamento Security</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Gestione taglie e dotazioni operative</div></div>
+    </div>
+    <div class="card" style="margin-bottom:22px;border-color:rgba(201,162,39,0.2)">
+      <div style="font-size:13px;color:var(--text);line-height:1.75">👋 Ciao. In questa sezione <strong>Abbigliamento Security</strong> puoi inserire le tue taglie per il vestiario operativo. Queste informazioni ci permettono di fornirti l'abbigliamento con le misure corrette.</div>
+    </div>
+    ${statoHtml}
+    <div style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;margin-bottom:12px">📦 Taglie e Dotazioni</div>
+    ${CAPI.map(c=>`
+    <div class="vest-card">
+      <div class="vest-card-title"><span style="font-size:20px">${c.icon}</span>${c.label}</div>
+      <div class="vest-row">
+        <div><div class="vest-lbl">Taglia</div>
+          <select class="vest-sel" id="vest_${c.key}_taglia"><option value="">— Seleziona —</option>${tagliOpts(scheda?.[c.key+'_taglia'])}</select></div>
+        <div><div class="vest-lbl">Già in possesso</div>${siNo('vest_'+c.key+'_possesso',scheda?.[c.key+'_possesso']||'')}</div>
+        <div><div class="vest-lbl">Radio</div>${siNo('vest_'+c.key+'_radio',scheda?.[c.key+'_radio']||'')}</div>
+      </div>
+    </div>`).join('')}
+    <div class="vest-card" style="margin-top:4px">
+      <div class="vest-card-title"><span style="font-size:20px">🔄</span>Richiesta Sostituzione</div>
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:16px">
+        <input type="checkbox" id="vest_richiedi" ${scheda?.richiesta_capo?'checked':''} onchange="_vestToggleRich()">
+        <span style="font-size:13px;font-weight:600">Richiedi sostituzione capo</span>
+      </label>
+      <div id="vest_rich_body" style="display:${scheda?.richiesta_capo?'block':'none'}">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+          <div><div class="vest-lbl">Capo da sostituire</div>
+            <select class="vest-sel" id="vest_rich_capo">
+              <option value="">— Seleziona —</option>
+              ${['Giacca Security','Maglietta Security','Pantaloni Security','Felpa Security'].map(c=>`<option value="${c}" ${scheda?.richiesta_capo===c?'selected':''}>${c}</option>`).join('')}
+            </select></div>
+          <div><div class="vest-lbl">Motivo</div>
+            <select class="vest-sel" id="vest_rich_motivo" onchange="_vestCheckAltro()">
+              <option value="">— Seleziona —</option>
+              ${['Usura','Danneggiamento','Smarrimento','Altro'].map(m=>`<option value="${m}" ${scheda?.richiesta_motivo===m?'selected':''}>${m}</option>`).join('')}
+            </select></div>
+        </div>
+        <div id="vest_altro_wrap" style="display:${scheda?.richiesta_motivo==='Altro'?'block':'none'};margin-bottom:16px">
+          <div class="vest-lbl">Descrizione motivo</div>
+          <input class="field-input" id="vest_rich_altro" placeholder="Descrivi il motivo..." value="${scheda?.richiesta_altro||''}">
+        </div>
+        <div><div class="vest-lbl" style="margin-bottom:9px">📷 Foto Prova (max 3, max 1MB, jpg/png/webp)</div>
+          <div id="vest_foto_preview" class="vest-foto-wrap"></div>
+          <div id="vest_foto_add_btn" style="margin-top:10px">
+            <button type="button" onclick="document.getElementById('vest_foto_input').click()" style="padding:9px 18px;background:var(--bg3);border:1.5px dashed var(--border);border-radius:10px;color:var(--text-muted);cursor:pointer;font-size:12px;width:100%;transition:border-color .2s" onmouseover="this.style.borderColor='rgba(201,162,39,0.5)'" onmouseout="this.style.borderColor='var(--border)'">+ Aggiungi Foto</button>
+            <input type="file" id="vest_foto_input" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="_vestAddFoto(this)">
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;margin-top:22px">
+      <button class="btn btn-primary" style="min-width:170px" onclick="_vestSalva()">💾 Salva Scheda</button>
+    </div>
+  </div>`;
+  _vestRenderFoto();
+}
+
+function _vestToggle(id, val) {
+  ['SI','NO'].forEach(v => { const b=document.getElementById(id+'_'+v); if(b) b.classList.toggle('on',v===val); });
+}
+function _vestGetToggle(id) {
+  if(document.getElementById(id+'_SI')?.classList.contains('on')) return 'SI';
+  if(document.getElementById(id+'_NO')?.classList.contains('on')) return 'NO';
+  return null;
+}
+function _vestToggleRich() {
+  const c=document.getElementById('vest_richiedi')?.checked;
+  const b=document.getElementById('vest_rich_body');
+  if(b) b.style.display=c?'block':'none';
+}
+function _vestCheckAltro() {
+  const m=document.getElementById('vest_rich_motivo')?.value;
+  const w=document.getElementById('vest_altro_wrap');
+  if(w) w.style.display=m==='Altro'?'block':'none';
+}
+function _vestRenderFoto() {
+  const c=document.getElementById('vest_foto_preview'); if(!c) return;
+  c.innerHTML=window._VESTF.foto.map((f,i)=>`<div class="vest-foto-item"><img src="${f.data}" alt="foto"><button class="vest-foto-del" onclick="_vestDelFoto(${i})">✕</button></div>`).join('');
+  const btn=document.getElementById('vest_foto_add_btn'); if(btn) btn.style.display=window._VESTF.foto.length>=3?'none':'';
+}
+function _vestDelFoto(i) { window._VESTF.foto.splice(i,1); _vestRenderFoto(); }
+function _vestAddFoto(input) {
+  const f=input.files[0]; input.value=''; if(!f) return;
+  if(!['image/jpeg','image/png','image/webp'].includes(f.type)){showToast('Formato non supportato (jpg/png/webp)','error');return;}
+  if(f.size>1024*1024){showToast('Foto troppo grande (max 1MB)','error');return;}
+  if(window._VESTF.foto.length>=3){showToast('Massimo 3 foto','error');return;}
+  const r=new FileReader(); r.onload=e=>{window._VESTF.foto.push({data:e.target.result});_vestRenderFoto();}; r.readAsDataURL(f);
+}
+async function _vestSalva() {
+  const capiKeys=['giacca','maglietta','pantaloni','felpa']; const body={};
+  capiKeys.forEach(k=>{body[k+'_taglia']=document.getElementById('vest_'+k+'_taglia')?.value||null;body[k+'_possesso']=_vestGetToggle('vest_'+k+'_possesso');body[k+'_radio']=_vestGetToggle('vest_'+k+'_radio');});
+  if(document.getElementById('vest_richiedi')?.checked){
+    body.richiesta_capo=document.getElementById('vest_rich_capo')?.value||null;
+    body.richiesta_motivo=document.getElementById('vest_rich_motivo')?.value||null;
+    body.richiesta_altro=document.getElementById('vest_rich_altro')?.value||null;
+    const ft=window._VESTF.foto;
+    body.foto1=ft[0]?.data||null; body.foto2=ft[1]?.data||null; body.foto3=ft[2]?.data||null;
+  }
+  try { await apiFetch('/vestiario',{method:'POST',body:JSON.stringify(body)}); showToast('✓ Scheda salvata'); renderUserVestiario(document.getElementById('content')); }
+  catch(e){showToast('Errore salvataggio','error');}
+}
+
+// ─── ADMIN VESTIARIO ──────────────────────────────────────────────────────────
+async function renderAdminVestiario(content) {
+  content.innerHTML=`<div style="padding:60px;text-align:center;color:var(--text-muted)"><div style="font-size:28px;margin-bottom:10px">👔</div>Caricamento Security Vestiario...</div>`;
+  try {
+    const [schede,mag]=await Promise.all([apiFetch('/admin/vestiario'),apiFetch('/admin/magazzino-vestiario')]);
+    window._VESA.data=schede; window._VESA.mag=mag;
+    _vesaRender(content);
+  } catch(e){content.innerHTML=`<div class="card" style="margin:24px">❌ Errore caricamento: ${e.message}</div>`;}
+}
+
+function _vesaRender(content) {
+  const schede=window._VESA.data; const mag=window._VESA.mag;
+  const tab=window._VESA.tab; const search=window._VESA.search.toLowerCase(); const statoF=window._VESA.stato;
+  const CAPI_KEYS=[{key:'giacca',label:'Giacca',icon:'🧥'},{key:'maglietta',label:'Maglietta',icon:'👕'},{key:'pantaloni',label:'Pantaloni',icon:'👖'},{key:'felpa',label:'Felpa',icon:'🧤'}];
+  const richieste=schede.filter(s=>s.richiesta_capo);
+  const inVal=richieste.filter(s=>s.stato_richiesta==='in_valutazione').length;
+  const appr=richieste.filter(s=>s.stato_richiesta==='approvata').length;
+  const nonAppr=richieste.filter(s=>s.stato_richiesta==='non_approvata').length;
+  const fmtData=ts=>ts?new Date(ts).toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric'}):'—';
+
+  // Filtro richieste
+  let filtRich=richieste.filter(s=>{
+    const nm=(s.nome_operatore||'')+' '+(s.cognome_operatore||'');
+    if(search && !nm.toLowerCase().includes(search)) return false;
+    if(statoF!=='tutti' && s.stato_richiesta!==statoF) return false;
+    return true;
+  });
+  // Filtro schede
+  let filtSch=schede.filter(s=>{
+    const nm=(s.nome_operatore||'')+' '+(s.cognome_operatore||'');
+    return !search||nm.toLowerCase().includes(search);
+  });
+
+  const statoBadge=stato=>{
+    const cfg={in_valutazione:{l:'In Valutazione',c:'#f59e0b',bg:'rgba(245,158,11,0.12)'},approvata:{l:'Approvata',c:'#10b981',bg:'rgba(16,185,129,0.12)'},non_approvata:{l:'Non Approvata',c:'#ef4444',bg:'rgba(239,68,68,0.12)'}};
+    const s=cfg[stato]||{l:stato||'—',c:'var(--text-muted)',bg:'var(--bg3)'};
+    return`<span style="padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;color:${s.c};background:${s.bg}">${s.l}</span>`;
+  };
+  const av=(nome,cognome)=>{const ini=((nome||'')[0]||'')+((cognome||'')[0]||'');return`<div style="width:32px;height:32px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;color:#000;flex-shrink:0">${ini.toUpperCase()}</div>`;};
+
+  const richHtml = filtRich.length===0
+    ? `<div style="padding:40px;text-align:center;color:var(--text-muted)">Nessuna richiesta trovata</div>`
+    : `<div class="table-wrap"><table class="admin-exp-table">
+        <thead><tr>
+          <th>Operatore</th><th>Capo</th><th>Motivo</th><th>Data</th><th>Foto</th><th>Stato</th><th>Azioni</th>
+        </tr></thead>
+        <tbody>${filtRich.map(s=>`<tr>
+          <td><div style="display:flex;align-items:center;gap:8px">${av(s.nome_operatore,s.cognome_operatore)}<span style="font-weight:600">${s.nome_operatore||''} ${s.cognome_operatore||''}</span></div></td>
+          <td style="font-weight:600">${s.richiesta_capo||'—'}</td>
+          <td>${s.richiesta_motivo||'—'}${s.richiesta_altro?'<div style="font-size:10px;color:var(--text-muted)">'+s.richiesta_altro+'</div>':''}</td>
+          <td style="white-space:nowrap;font-size:11px">${fmtData(s.data_richiesta)}</td>
+          <td>${[s.foto1,s.foto2,s.foto3].filter(Boolean).length>0
+            ?`<div style="display:flex;gap:4px">${[s.foto1,s.foto2,s.foto3].filter(Boolean).map((f,i)=>`<img src="${f}" onclick="_vesaFoto('${s.id}',${i})" style="width:36px;height:36px;border-radius:6px;object-fit:cover;cursor:pointer;border:1px solid var(--border)">`).join('')}</div>`
+            :'<span style="color:var(--text-muted);font-size:11px">Nessuna</span>'}</td>
+          <td>${statoBadge(s.stato_richiesta)}</td>
+          <td><div style="display:flex;gap:5px">
+            <button onclick="_vesaApprova('${s.id}')" style="padding:4px 10px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.35);border-radius:6px;color:#10b981;cursor:pointer;font-size:11px;font-weight:600">✅ Approva</button>
+            <button onclick="_vesaNonApprova('${s.id}')" style="padding:4px 10px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.35);border-radius:6px;color:#ef4444;cursor:pointer;font-size:11px;font-weight:600">❌ Non Approva</button>
+          </div></td>
+        </tr>`).join('')}</tbody>
+      </table></div>`;
+
+  const schHtml = filtSch.length===0
+    ? `<div style="padding:40px;text-align:center;color:var(--text-muted)">Nessuna scheda trovata</div>`
+    : `<div style="display:flex;flex-direction:column;gap:12px">${filtSch.map(s=>`
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px 20px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+          ${av(s.nome_operatore,s.cognome_operatore)}
+          <div style="font-weight:700;font-size:14px">${s.nome_operatore||''} ${s.cognome_operatore||''}</div>
+          ${s.richiesta_capo?statoBadge(s.stato_richiesta):'<span style="font-size:10px;color:var(--text-muted)">Nessuna richiesta</span>'}
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+          ${CAPI_KEYS.map(c=>`<div style="padding:10px;background:var(--bg3);border-radius:9px;border:1px solid var(--border)">
+            <div style="font-size:16px;margin-bottom:5px">${c.icon}</div>
+            <div style="font-size:10px;letter-spacing:1px;color:var(--text-muted);text-transform:uppercase;margin-bottom:3px">${c.label}</div>
+            <div style="font-weight:700;font-size:13px;color:var(--gold)">${s[c.key+'_taglia']||'—'}</div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:3px">Poss: <strong>${s[c.key+'_possesso']||'—'}</strong> | Radio: <strong>${s[c.key+'_radio']||'—'}</strong></div>
+          </div>`).join('')}
+        </div>
+      </div>`).join('')}</div>`;
+
+  const magHtml = `<div style="margin-bottom:18px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px 20px">
+    <div style="font-family:'Cinzel',serif;font-size:11px;color:var(--gold);letter-spacing:2px;margin-bottom:14px">➕ Aggiungi Stock</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end">
+      <div><div style="font-size:10px;letter-spacing:1px;color:var(--text-muted);text-transform:uppercase;margin-bottom:5px">Capo</div>
+        <select class="vest-sel" id="mag_tipo" style="width:100%;padding:10px 12px;background:var(--bg3);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;outline:none">
+          ${['giacca','maglietta','pantaloni','felpa'].map(c=>`<option value="${c}">${c.charAt(0).toUpperCase()+c.slice(1)}</option>`).join('')}
+        </select></div>
+      <div><div style="font-size:10px;letter-spacing:1px;color:var(--text-muted);text-transform:uppercase;margin-bottom:5px">Taglia</div>
+        <select class="vest-sel" id="mag_taglia" style="width:100%;padding:10px 12px;background:var(--bg3);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;outline:none">
+          ${['XS','S','M','L','XL','XXL','XXXL'].map(t=>`<option value="${t}">${t}</option>`).join('')}
+        </select></div>
+      <div><div style="font-size:10px;letter-spacing:1px;color:var(--text-muted);text-transform:uppercase;margin-bottom:5px">Quantità</div>
+        <input type="number" id="mag_qty" min="1" value="1" style="width:100%;padding:10px 12px;background:var(--bg3);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;outline:none"></div>
+      <button onclick="_vesaAddMag()" style="padding:10px 18px;background:linear-gradient(135deg,#92400e,#d97706);border:none;border-radius:10px;color:#fff;font-weight:700;cursor:pointer;font-size:12px">+ Aggiungi</button>
+    </div>
+  </div>
+  ${mag.length===0?`<div style="padding:30px;text-align:center;color:var(--text-muted)">Nessun stock inserito</div>`
+  :`<div class="table-wrap"><table class="admin-exp-table">
+    <thead><tr><th>Capo</th><th>Taglia</th><th class="right">Stock Totale</th><th class="right">Disponibile</th><th class="right">Assegnato</th><th>Aggiornamento</th></tr></thead>
+    <tbody>${mag.map((m,i)=>`<tr>
+      <td style="font-weight:600;text-transform:capitalize">${m.tipo_capo}</td>
+      <td><span style="background:rgba(201,162,39,0.12);color:var(--gold);padding:2px 10px;border-radius:6px;font-weight:700">${m.taglia}</span></td>
+      <td style="text-align:right;font-weight:700">${m.quantita_stock}</td>
+      <td style="text-align:right;color:${m.quantita_disponibile>0?'#10b981':'#ef4444'};font-weight:700">${m.quantita_disponibile}</td>
+      <td style="text-align:right">${m.quantita_assegnata}</td>
+      <td style="font-size:11px;color:var(--text-muted)">${fmtData(m.data_aggiornamento)}</td>
+    </tr>`).join('')}</tbody>
+  </table></div>`}`;
+
+  content.innerHTML = `
+  <style>
+    .vesa-tab{padding:8px 18px;border:1px solid var(--border);border-radius:8px;background:var(--bg3);color:var(--text-muted);cursor:pointer;font-size:12px;font-weight:600;transition:all .15s}
+    .vesa-tab.on{background:rgba(201,162,39,0.15);border-color:var(--gold);color:var(--gold)}
+    .vest-sel{outline:none;transition:border-color .2s} .vest-sel:focus{border-color:var(--gold)}
+  </style>
+  <div style="padding:20px 24px;max-width:1300px;margin:0 auto">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:22px">
+      <div style="width:48px;height:48px;border-radius:14px;background:rgba(201,162,39,0.1);border:1px solid rgba(201,162,39,0.3);display:flex;align-items:center;justify-content:center;font-size:24px">👔</div>
+      <div><div style="font-family:'Cinzel',serif;font-size:16px;font-weight:700;color:var(--gold);letter-spacing:2px">Security Vestiario</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Gestione dotazioni e richieste sostituzione</div></div>
+    </div>
+
+    <!-- KPI -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:11px;margin-bottom:22px">
+      <div style="padding:14px 16px;background:var(--bg2);border:1px solid rgba(245,158,11,0.3);border-radius:11px"><div style="font-size:9px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">In Valutazione</div><div style="font-size:22px;font-weight:700;color:#f59e0b">${inVal}</div></div>
+      <div style="padding:14px 16px;background:var(--bg2);border:1px solid rgba(16,185,129,0.3);border-radius:11px"><div style="font-size:9px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">Approvate</div><div style="font-size:22px;font-weight:700;color:#10b981">${appr}</div></div>
+      <div style="padding:14px 16px;background:var(--bg2);border:1px solid rgba(239,68,68,0.3);border-radius:11px"><div style="font-size:9px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">Non Approvate</div><div style="font-size:22px;font-weight:700;color:#ef4444">${nonAppr}</div></div>
+      ${CAPI_KEYS.map(c=>`<div style="padding:14px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:11px"><div style="font-size:9px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">${c.icon} Senza ${c.label}</div><div style="font-size:22px;font-weight:700;color:${schede.filter(s=>!s[c.key+'_taglia']).length>0?'#f59e0b':'#10b981'}">${schede.filter(s=>!s[c.key+'_taglia']).length}</div></div>`).join('')}
+    </div>
+
+    <!-- FILTRI -->
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:11px;padding:14px 18px;margin-bottom:18px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+      <div style="position:relative;flex:1;min-width:180px">
+        <input id="vesa_search" class="field-input" placeholder="Cerca operatore..." value="${window._VESA.search}" oninput="_vesaSetSearch(this.value)" style="padding-right:32px">
+        ${window._VESA.search?`<button onclick="_vesaSetSearch('')" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:15px">✕</button>`:''}
+      </div>
+      <div style="min-width:160px"><select class="field-input" onchange="_vesaSetStato(this.value)">
+        <option value="tutti" ${statoF==='tutti'?'selected':''}>Tutti gli stati</option>
+        <option value="in_valutazione" ${statoF==='in_valutazione'?'selected':''}>In Valutazione</option>
+        <option value="approvata" ${statoF==='approvata'?'selected':''}>Approvate</option>
+        <option value="non_approvata" ${statoF==='non_approvata'?'selected':''}>Non Approvate</option>
+      </select></div>
+      <div style="display:flex;gap:6px">
+        <button onclick="_vesaFiltroRapido('in_valutazione')" class="vesa-tab ${statoF==='in_valutazione'?'on':''}">⏳ Aperte</button>
+        <button onclick="_vesaFiltroRapido('approvata')" class="vesa-tab ${statoF==='approvata'?'on':''}">✅ Approvate</button>
+        <button onclick="_vesaFiltroRapido('non_approvata')" class="vesa-tab ${statoF==='non_approvata'?'on':''}">❌ Rifiutate</button>
+        <button onclick="_vesaReset()" class="vesa-tab">↺ Reset</button>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div style="display:flex;gap:8px;margin-bottom:18px">
+      <button onclick="_vesaSetTab('richieste')" class="vesa-tab ${tab==='richieste'?'on':''}">🔄 Richieste Sostituzione (${richieste.length})</button>
+      <button onclick="_vesaSetTab('schede')" class="vesa-tab ${tab==='schede'?'on':''}">📋 Schede Operatori (${schede.length})</button>
+      <button onclick="_vesaSetTab('magazzino')" class="vesa-tab ${tab==='magazzino'?'on':''}">📦 Magazzino</button>
+    </div>
+
+    <!-- CONTENUTO TAB -->
+    <div id="vesa_tab_content">
+      ${tab==='richieste'?richHtml:tab==='schede'?schHtml:magHtml}
+    </div>
+  </div>`;
+}
+
+function _vesaSetTab(t){window._VESA.tab=t;_vesaRender(document.getElementById('content'));}
+function _vesaSetSearch(v){window._VESA.search=v;_vesaRender(document.getElementById('content'));}
+function _vesaSetStato(v){window._VESA.stato=v;_vesaRender(document.getElementById('content'));}
+function _vesaFiltroRapido(v){window._VESA.stato=window._VESA.stato===v?'tutti':v;_vesaRender(document.getElementById('content'));}
+function _vesaReset(){window._VESA.search='';window._VESA.stato='tutti';_vesaRender(document.getElementById('content'));}
+
+function _vesaFoto(id, idx) {
+  const s=window._VESA.data.find(x=>x.id===id); if(!s) return;
+  const foto=[s.foto1,s.foto2,s.foto3].filter(Boolean);
+  openModal(`<div class="modal-title"><span>📷 Foto prova</span><span class="modal-close" onclick="closeModalDirect()">✕</span></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+      ${foto.map((f,i)=>`<img src="${f}" style="max-width:100%;max-height:55vh;border-radius:10px;border:1px solid var(--border);object-fit:contain">`).join('')}
+    </div>`);
+}
+
+async function _vesaApprova(id) {
+  if(!confirm('Approvare questa richiesta?')) return;
+  try {
+    await apiFetch('/admin/vestiario/'+id+'/stato',{method:'PATCH',body:JSON.stringify({stato_richiesta:'approvata'})});
+    const s=window._VESA.data.find(x=>x.id===id); if(s){s.stato_richiesta='approvata';s.motivazione_admin=null;}
+    showToast('✓ Richiesta approvata'); _vesaRender(document.getElementById('content'));
+  } catch(e){showToast('Errore','error');}
+}
+
+async function _vesaNonApprova(id) {
+  openModal(`<div class="modal-title"><span>❌ Non Approvazione</span><span class="modal-close" onclick="closeModalDirect()">✕</span></div>
+    <div style="margin-bottom:14px;font-size:13px;color:var(--text-muted)">Inserisci la motivazione che verrà mostrata all'operatore:</div>
+    <textarea id="vest_motiv_input" class="field-input" style="min-height:90px;margin-bottom:16px" placeholder="Es: Il capo non presenta usura sufficiente..."></textarea>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-secondary" onclick="closeModalDirect()">Annulla</button>
+      <button class="btn btn-danger" onclick="_vesaNonApprovaConf('${id}')">❌ Conferma Non Approvazione</button>
+    </div>`);
+}
+
+async function _vesaNonApprovaConf(id) {
+  const motiv=document.getElementById('vest_motiv_input')?.value.trim();
+  if(!motiv){showToast('Inserisci una motivazione','error');return;}
+  try {
+    await apiFetch('/admin/vestiario/'+id+'/stato',{method:'PATCH',body:JSON.stringify({stato_richiesta:'non_approvata',motivazione_admin:motiv})});
+    const s=window._VESA.data.find(x=>x.id===id); if(s){s.stato_richiesta='non_approvata';s.motivazione_admin=motiv;}
+    closeModalDirect(); showToast('✓ Richiesta non approvata'); _vesaRender(document.getElementById('content'));
+  } catch(e){showToast('Errore','error');}
+}
+
+async function _vesaAddMag() {
+  const tipo=document.getElementById('mag_tipo')?.value;
+  const taglia=document.getElementById('mag_taglia')?.value;
+  const qty=parseInt(document.getElementById('mag_qty')?.value)||0;
+  if(!tipo||!taglia||qty<1){showToast('Compila tutti i campi','error');return;}
+  try {
+    await apiFetch('/admin/magazzino-vestiario',{method:'POST',body:JSON.stringify({tipo_capo:tipo,taglia,quantita:qty})});
+    showToast('✓ Stock aggiornato');
+    const mag=await apiFetch('/admin/magazzino-vestiario'); window._VESA.mag=mag;
+    _vesaRender(document.getElementById('content'));
+  } catch(e){showToast('Errore','error');}
 }
 
 // ══ INIT =====

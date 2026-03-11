@@ -11,6 +11,40 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const JWT_SECRET = process.env.JWT_SECRET || 'alfasecurity_secret';
 const PORT = process.env.PORT || 3003;
 
+// ── AUTO-CREATE VESTIARIO TABLES ──────────────────────────────────────────────
+pool.query(`
+  CREATE TABLE IF NOT EXISTS security_vestiario (
+    id TEXT PRIMARY KEY,
+    operatore_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+    nome_operatore TEXT, cognome_operatore TEXT,
+    giacca_taglia TEXT, giacca_possesso TEXT, giacca_radio TEXT,
+    maglietta_taglia TEXT, maglietta_possesso TEXT, maglietta_radio TEXT,
+    pantaloni_taglia TEXT, pantaloni_possesso TEXT, pantaloni_radio TEXT,
+    felpa_taglia TEXT, felpa_possesso TEXT, felpa_radio TEXT,
+    richiesta_capo TEXT, richiesta_motivo TEXT, richiesta_altro TEXT,
+    foto1 TEXT, foto2 TEXT, foto3 TEXT,
+    stato_richiesta TEXT, motivazione_admin TEXT,
+    data_creazione TIMESTAMPTZ DEFAULT NOW(), data_richiesta TIMESTAMPTZ
+  );
+  CREATE TABLE IF NOT EXISTS magazzino_vestiario (
+    id TEXT PRIMARY KEY, tipo_capo TEXT NOT NULL, taglia TEXT NOT NULL,
+    quantita_stock INTEGER DEFAULT 0, quantita_disponibile INTEGER DEFAULT 0,
+    quantita_assegnata INTEGER DEFAULT 0,
+    data_aggiornamento TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(tipo_capo, taglia)
+  );
+  CREATE TABLE IF NOT EXISTS assegnazioni_vestiario (
+    id TEXT PRIMARY KEY, operatore_id TEXT REFERENCES users(id),
+    nome_operatore TEXT, tipo_capo TEXT, taglia TEXT,
+    data_consegna TIMESTAMPTZ DEFAULT NOW(), quantita INTEGER DEFAULT 1, note TEXT
+  );
+  CREATE TABLE IF NOT EXISTS storico_sostituzioni_vestiario (
+    id TEXT PRIMARY KEY, operatore_id TEXT REFERENCES users(id),
+    nome_operatore TEXT, tipo_capo TEXT, motivo_sostituzione TEXT,
+    data_sostituzione TIMESTAMPTZ DEFAULT NOW(), richiesta_id TEXT, note_admin TEXT
+  );
+`).catch(e => console.error('Vestiario tables init error:', e.message));
+
 // ── Auth middleware ──────────────────────────────────────────────────────────
 function auth(req, res, next) {
   const h = req.headers.authorization;
@@ -818,6 +852,112 @@ app.delete('/api/cassa-anticipi/:id', auth, adminOnly, async (req, res) => {
 });
 
 function _fmtAmt(n){return '€'+n.toFixed(2).replace('.',',');}
+
+// ── SECURITY VESTIARIO ────────────────────────────────────────────────────────
+app.get('/api/vestiario/mio', auth, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM security_vestiario WHERE operatore_id=$1', [req.user.id]);
+    res.json(r.rows[0] || null);
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.post('/api/vestiario', auth, async (req, res) => {
+  try {
+    const { giacca_taglia, giacca_possesso, giacca_radio,
+            maglietta_taglia, maglietta_possesso, maglietta_radio,
+            pantaloni_taglia, pantaloni_possesso, pantaloni_radio,
+            felpa_taglia, felpa_possesso, felpa_radio,
+            richiesta_capo, richiesta_motivo, richiesta_altro,
+            foto1, foto2, foto3 } = req.body;
+    const u = await pool.query('SELECT nome, cognome FROM users WHERE id=$1', [req.user.id]);
+    const nome = u.rows[0]?.nome || ''; const cognome = u.rows[0]?.cognome || '';
+    const hasReq = !!(richiesta_capo);
+    const existing = await pool.query('SELECT id FROM security_vestiario WHERE operatore_id=$1', [req.user.id]);
+    if (existing.rows.length > 0) {
+      const r = await pool.query(`UPDATE security_vestiario SET
+        nome_operatore=$1, cognome_operatore=$2,
+        giacca_taglia=$3, giacca_possesso=$4, giacca_radio=$5,
+        maglietta_taglia=$6, maglietta_possesso=$7, maglietta_radio=$8,
+        pantaloni_taglia=$9, pantaloni_possesso=$10, pantaloni_radio=$11,
+        felpa_taglia=$12, felpa_possesso=$13, felpa_radio=$14,
+        richiesta_capo=$15, richiesta_motivo=$16, richiesta_altro=$17,
+        foto1=$18, foto2=$19, foto3=$20,
+        stato_richiesta=CASE WHEN $21 THEN 'in_valutazione' ELSE stato_richiesta END,
+        motivazione_admin=CASE WHEN $21 THEN NULL ELSE motivazione_admin END,
+        data_richiesta=CASE WHEN $21 THEN NOW() ELSE data_richiesta END
+        WHERE operatore_id=$22 RETURNING *`,
+        [nome, cognome,
+         giacca_taglia||null, giacca_possesso||null, giacca_radio||null,
+         maglietta_taglia||null, maglietta_possesso||null, maglietta_radio||null,
+         pantaloni_taglia||null, pantaloni_possesso||null, pantaloni_radio||null,
+         felpa_taglia||null, felpa_possesso||null, felpa_radio||null,
+         richiesta_capo||null, richiesta_motivo||null, richiesta_altro||null,
+         foto1||null, foto2||null, foto3||null, hasReq, req.user.id]);
+      return res.json(r.rows[0]);
+    }
+    const id = uuidv4();
+    const r = await pool.query(`INSERT INTO security_vestiario
+      (id, operatore_id, nome_operatore, cognome_operatore,
+       giacca_taglia, giacca_possesso, giacca_radio,
+       maglietta_taglia, maglietta_possesso, maglietta_radio,
+       pantaloni_taglia, pantaloni_possesso, pantaloni_radio,
+       felpa_taglia, felpa_possesso, felpa_radio,
+       richiesta_capo, richiesta_motivo, richiesta_altro,
+       foto1, foto2, foto3, stato_richiesta, data_richiesta)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,
+        CASE WHEN $23 THEN 'in_valutazione' ELSE NULL END,
+        CASE WHEN $23 THEN NOW() ELSE NULL END) RETURNING *`,
+      [id, req.user.id, nome, cognome,
+       giacca_taglia||null, giacca_possesso||null, giacca_radio||null,
+       maglietta_taglia||null, maglietta_possesso||null, maglietta_radio||null,
+       pantaloni_taglia||null, pantaloni_possesso||null, pantaloni_radio||null,
+       felpa_taglia||null, felpa_possesso||null, felpa_radio||null,
+       richiesta_capo||null, richiesta_motivo||null, richiesta_altro||null,
+       foto1||null, foto2||null, foto3||null, hasReq]);
+    res.json(r.rows[0]);
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.get('/api/admin/vestiario', auth, adminOnly, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM security_vestiario ORDER BY cognome_operatore, nome_operatore');
+    res.json(r.rows);
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.patch('/api/admin/vestiario/:id/stato', auth, adminOnly, async (req, res) => {
+  try {
+    const { stato_richiesta, motivazione_admin } = req.body;
+    const r = await pool.query(
+      'UPDATE security_vestiario SET stato_richiesta=$1, motivazione_admin=$2 WHERE id=$3 RETURNING *',
+      [stato_richiesta, motivazione_admin||null, req.params.id]);
+    res.json(r.rows[0]);
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.get('/api/admin/magazzino-vestiario', auth, adminOnly, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM magazzino_vestiario ORDER BY tipo_capo, taglia');
+    res.json(r.rows);
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.post('/api/admin/magazzino-vestiario', auth, adminOnly, async (req, res) => {
+  try {
+    const { tipo_capo, taglia, quantita } = req.body;
+    const q = parseInt(quantita)||0;
+    const id = uuidv4();
+    const r = await pool.query(`
+      INSERT INTO magazzino_vestiario (id,tipo_capo,taglia,quantita_stock,quantita_disponibile,quantita_assegnata,data_aggiornamento)
+      VALUES ($1,$2,$3,$4,$4,0,NOW())
+      ON CONFLICT (tipo_capo,taglia) DO UPDATE SET
+        quantita_stock=magazzino_vestiario.quantita_stock+$4,
+        quantita_disponibile=magazzino_vestiario.quantita_disponibile+$4,
+        data_aggiornamento=NOW()
+      RETURNING *`, [id, tipo_capo, taglia, q]);
+    res.json(r.rows[0]);
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
 
 // ── HEALTH ────────────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => res.json({ ok: true }));

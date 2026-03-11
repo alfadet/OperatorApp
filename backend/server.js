@@ -506,6 +506,9 @@ app.post('/api/urgent-messages', auth, adminOnly, async (req, res) => {
       'INSERT INTO urgent_messages (id,testo,expires_at,created_at) VALUES ($1,$2,$3,NOW()) RETURNING *',
       [id, testo, expires_at]
     );
+    const users = await pool.query('SELECT id FROM users WHERE is_admin=false');
+    const ids = await getPushIds(users.rows.map(u => u.id));
+    await sendPush(ids, '🚨 Messaggio Urgente', testo);
     res.json(r.rows[0]);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

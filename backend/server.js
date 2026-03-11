@@ -893,7 +893,7 @@ async function sendPush(playerIds, title, message) {
     console.log('Push sending to:', playerIds, 'title:', title);
     const resp = await fetch('https://api.onesignal.com/notifications', {
       method: 'POST',
-      headers: { 'Authorization': `Basic ${apiKey}`, 'Content-Type': 'application/json' },
+      headers: { 'Authorization': `Key ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         app_id: appId,
         include_subscription_ids: playerIds,

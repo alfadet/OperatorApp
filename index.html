@@ -1611,23 +1611,13 @@ async function initOneSignal() {
   try {
     if (typeof Notification === 'undefined') return;
     if (Notification.permission === 'denied') return;
-    // Se il browser ha già il permesso E il player_id è salvato nel DB → silent
-    if (Notification.permission === 'granted' && currentUser?.has_push) {
+    // Permesso già dato → registrazione silenziosa
+    if (Notification.permission === 'granted') {
       _oneSignalInitSilent();
       return;
     }
-    // Mostra modal: permesso non dato OPPURE player_id non salvato
-    const overlay = document.createElement('div');
-    overlay.id = 'push-banner';
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:99999;display:flex;align-items:center;justify-content:center;';
-    overlay.innerHTML = `
-      <div style="background:#1a1a2e;border:2px solid #c9a227;border-radius:16px;padding:36px 32px;max-width:360px;width:90%;text-align:center;color:#fff;">
-        <div style="font-size:48px;margin-bottom:16px;">🔔</div>
-        <div style="font-size:18px;font-weight:700;color:#c9a227;margin-bottom:12px;">Attiva le Notifiche</div>
-        <div style="font-size:14px;color:#ccc;line-height:1.6;margin-bottom:28px;">Per ricevere messaggi urgenti e comunicazioni dell'amministratore devi attivare le notifiche push.</div>
-        <button onclick="enablePushNotifications()" style="width:100%;background:linear-gradient(135deg,#a07818,#c9a227);color:#000;border:none;padding:14px;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;">Attiva Notifiche</button>
-      </div>`;
-    document.body.appendChild(overlay);
+    // Permesso non ancora dato → chiedi automaticamente al browser
+    await enablePushNotifications();
   } catch(e) { console.log('OneSignal init error:', e.message); }
 }
 

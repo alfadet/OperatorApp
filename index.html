@@ -7578,7 +7578,23 @@ async function _vesaAddMag() {
 // ══ INIT =====
 window.addEventListener('load', () => {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(reg => {
+      // Controlla subito se c'è una versione nuova
+      reg.update();
+      // Ricontrolla ogni 60 secondi
+      setInterval(() => reg.update(), 60000);
+      // Ricontrolla quando l'utente torna sull'app
+      window.addEventListener('focus', () => reg.update());
+      // Se trova un nuovo SW, ricarica la pagina automaticamente
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            window.location.reload();
+          }
+        });
+      });
+    }).catch(() => {});
   }
   // restore saved theme
   try {

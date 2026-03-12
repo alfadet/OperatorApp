@@ -7075,10 +7075,11 @@ function _vesaRender(content) {
   const schHtml = filtSch.length===0
     ? `<div style="padding:40px;text-align:center;color:var(--text-muted)">Nessuna scheda trovata</div>`
     : `<div style="display:flex;flex-direction:column;gap:12px">${filtSch.map(s=>`
-      <div onclick="_vesaDettaglioOp('${s.id}')" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px 20px;cursor:pointer" onmouseover="this.style.borderColor='rgba(201,162,39,0.35)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px 20px">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)">
           ${av(s.nome_operatore,s.cognome_operatore)}
-          <div style="font-weight:700;font-size:14px">${s.nome_operatore||''} ${s.cognome_operatore||''}</div>
+          <div style="font-weight:700;font-size:14px;flex:1">${s.nome_operatore||''} ${s.cognome_operatore||''}</div>
+          <button onclick="_vesaDettaglioOp('${s.id}')" style="padding:5px 12px;background:rgba(201,162,39,0.1);border:1.5px solid rgba(201,162,39,0.4);border-radius:8px;color:var(--gold);cursor:pointer;font-size:11px;font-weight:700">📋 Scheda</button>
           ${s.richiesta_capo?statoBadge(s.stato_richiesta):'<span style="font-size:10px;color:var(--text-muted)">Nessuna richiesta</span>'}
         </div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
@@ -7138,7 +7139,7 @@ function _vesaRender(content) {
       <div style="padding:14px 16px;background:var(--bg2);border:1px solid rgba(245,158,11,0.3);border-radius:11px"><div style="font-size:9px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">In Valutazione</div><div style="font-size:22px;font-weight:700;color:#f59e0b">${inVal}</div></div>
       <div style="padding:14px 16px;background:var(--bg2);border:1px solid rgba(16,185,129,0.3);border-radius:11px"><div style="font-size:9px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">Approvate</div><div style="font-size:22px;font-weight:700;color:#10b981">${appr}</div></div>
       <div style="padding:14px 16px;background:var(--bg2);border:1px solid rgba(239,68,68,0.3);border-radius:11px"><div style="font-size:9px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">Non Approvate</div><div style="font-size:22px;font-weight:700;color:#ef4444">${nonAppr}</div></div>
-      ${CAPI_KEYS.map(c=>{const cnt=schede.filter(s=>!s[c.key+'_taglia']).length;return`<div onclick="_vesaSenzaCapo('${c.key}')" style="padding:14px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:11px;cursor:pointer" onmouseover="this.style.borderColor='rgba(201,162,39,0.4)'" onmouseout="this.style.borderColor='var(--border)'"><div style="font-size:9px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">${c.icon} Senza ${c.label}</div><div style="font-size:22px;font-weight:700;color:${cnt>0?'#f59e0b':'#10b981'}">${cnt}</div><div style="font-size:9px;color:var(--text-muted);margin-top:3px">↗ vedi lista</div></div>`;}).join('')}
+      ${CAPI_KEYS.map(c=>{const cnt=schede.filter(s=>s[c.key+'_possesso']==='NO').length;return`<div onclick="_vesaSenzaCapo('${c.key}')" style="padding:14px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:11px;cursor:pointer" onmouseover="this.style.borderColor='rgba(201,162,39,0.4)'" onmouseout="this.style.borderColor='var(--border)'"><div style="font-size:9px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">${c.icon} Senza ${c.label}</div><div style="font-size:22px;font-weight:700;color:${cnt>0?'#f59e0b':'#10b981'}">${cnt}</div><div style="font-size:9px;color:var(--text-muted);margin-top:3px">↗ vedi lista</div></div>`;}).join('')}
       <div onclick="_vesaRichiesteRadio()" style="padding:14px 16px;background:var(--bg2);border:1px solid ${schede.filter(s=>s.radio_stato==='aziendale').length>0?'rgba(245,158,11,0.35)':'var(--border)'};border-radius:11px;cursor:pointer" onmouseover="this.style.borderColor='rgba(201,162,39,0.4)'" onmouseout="this.style.borderColor='var(--border)'"><div style="font-size:9px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">📡 Richieste Radio Aziendale</div><div style="font-size:22px;font-weight:700;color:${schede.filter(s=>s.radio_stato==='aziendale').length>0?'#f59e0b':'#10b981'}">${schede.filter(s=>s.radio_stato==='aziendale').length}</div><div style="font-size:9px;color:var(--text-muted);margin-top:3px">↗ vedi lista</div></div>
     </div>
 
@@ -7205,7 +7206,7 @@ function _vesaDettaglioOp(id) {
 
 function _vesaSenzaCapo(capo) {
   const ICONE={giacca:'🧥',maglietta:'👕',pantaloni:'👖',felpa:'🧤'};
-  const lista=window._VESA.data.filter(s=>!s[capo+'_taglia']);
+  const lista=window._VESA.data.filter(s=>s[capo+'_possesso']==='NO');
   const capLabel=capo.charAt(0).toUpperCase()+capo.slice(1);
   const icon=ICONE[capo]||'👔';
   openModal(`<div class="modal-title">
@@ -7230,7 +7231,7 @@ function _vesaSenzaCapo(capo) {
 
 function _vesaSenzaCapoPDF(capo) {
   const {jsPDF}=window.jspdf; if(!jsPDF){showToast('Libreria PDF non disponibile','error');return;}
-  const lista=window._VESA.data.filter(s=>!s[capo+'_taglia']);
+  const lista=window._VESA.data.filter(s=>s[capo+'_possesso']==='NO');
   const capLabel=capo.charAt(0).toUpperCase()+capo.slice(1);
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   const W=210,M=18; let y=M;
@@ -7328,7 +7329,7 @@ function _vesaRichiesteRadioPDF() {
 }
 
 function _vesaSetTab(t){window._VESA.tab=t;_vesaRender(document.getElementById('content'));}
-function _vesaSetSearch(v){window._VESA.search=v;_vesaRender(document.getElementById('content'));}
+function _vesaSetSearch(v){window._VESA.search=v;_vesaRender(document.getElementById('content'));const inp=document.getElementById('vesa_search');if(inp){inp.focus();inp.setSelectionRange(inp.value.length,inp.value.length);}}
 function _vesaSetStato(v){window._VESA.stato=v;_vesaRender(document.getElementById('content'));}
 function _vesaFiltroRapido(v){window._VESA.stato=window._VESA.stato===v?'tutti':v;_vesaRender(document.getElementById('content'));}
 function _vesaReset(){window._VESA.search='';window._VESA.stato='tutti';_vesaRender(document.getElementById('content'));}

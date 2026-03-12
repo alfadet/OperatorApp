@@ -1048,6 +1048,24 @@ app.post('/api/admin/magazzino-vestiario', auth, adminOnly, async (req, res) => 
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
+app.patch('/api/admin/magazzino-vestiario/:id', auth, adminOnly, async (req, res) => {
+  try {
+    const { quantita_stock, quantita_disponibile, quantita_assegnata } = req.body;
+    const r = await pool.query(
+      `UPDATE magazzino_vestiario SET quantita_stock=$1, quantita_disponibile=$2, quantita_assegnata=$3, data_aggiornamento=NOW() WHERE id=$4 RETURNING *`,
+      [parseInt(quantita_stock)||0, parseInt(quantita_disponibile)||0, parseInt(quantita_assegnata)||0, req.params.id]);
+    if (!r.rows.length) return res.status(404).json({error:'Non trovato'});
+    res.json(r.rows[0]);
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.delete('/api/admin/magazzino-vestiario/:id', auth, adminOnly, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM magazzino_vestiario WHERE id=$1', [req.params.id]);
+    res.json({ok:true});
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
 // ── PRIMA FORNITURE ───────────────────────────────────────────────────────────
 app.get('/api/admin/prime-forniture', auth, adminOnly, async (req, res) => {
   try {

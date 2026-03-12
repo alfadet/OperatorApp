@@ -7095,7 +7095,10 @@ function _vesaRender(content) {
       </div>`).join('')}</div>`;
 
   const magHtml = `<div style="margin-bottom:18px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px 20px">
-    <div style="font-family:'Cinzel',serif;font-size:11px;color:var(--gold);letter-spacing:2px;margin-bottom:14px">➕ Aggiungi Stock</div>
+    <div style="display:flex;align-items:center;margin-bottom:14px">
+      <div style="font-family:'Cinzel',serif;font-size:11px;color:var(--gold);letter-spacing:2px;flex:1">➕ Aggiungi Stock</div>
+      <button onclick="_vesaMagPDF()" style="padding:6px 14px;background:rgba(201,162,39,0.1);border:1.5px solid rgba(201,162,39,0.4);border-radius:8px;color:var(--gold);cursor:pointer;font-size:11px;font-weight:700">📄 Stampa PDF</button>
+    </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end">
       <div><div style="font-size:10px;letter-spacing:1px;color:var(--text-muted);text-transform:uppercase;margin-bottom:5px">Capo</div>
         <select class="vest-sel" id="mag_tipo" style="width:100%;padding:10px 12px;background:var(--bg3);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;outline:none">
@@ -7112,7 +7115,7 @@ function _vesaRender(content) {
   </div>
   ${mag.length===0?`<div style="padding:30px;text-align:center;color:var(--text-muted)">Nessun stock inserito</div>`
   :`<div class="table-wrap"><table class="admin-exp-table">
-    <thead><tr><th>Capo</th><th>Taglia</th><th class="right">Stock Totale</th><th class="right">Disponibile</th><th class="right">Assegnato</th><th>Aggiornamento</th></tr></thead>
+    <thead><tr><th>Capo</th><th>Taglia</th><th class="right">Stock Totale</th><th class="right">Disponibile</th><th class="right">Assegnato</th><th>Aggiornamento</th><th>Azioni</th></tr></thead>
     <tbody>${mag.map((m,i)=>`<tr>
       <td style="font-weight:600;text-transform:capitalize">${m.tipo_capo}</td>
       <td><span style="background:rgba(201,162,39,0.12);color:var(--gold);padding:2px 10px;border-radius:6px;font-weight:700">${m.taglia}</span></td>
@@ -7120,6 +7123,10 @@ function _vesaRender(content) {
       <td style="text-align:right;color:${m.quantita_disponibile>0?'#10b981':'#ef4444'};font-weight:700">${m.quantita_disponibile}</td>
       <td style="text-align:right">${m.quantita_assegnata}</td>
       <td style="font-size:11px;color:var(--text-muted)">${fmtData(m.data_aggiornamento)}</td>
+      <td><div style="display:flex;gap:5px">
+        <button onclick="_vesaEditMag('${m.id}')" style="padding:4px 9px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.4);border-radius:6px;color:#60a5fa;cursor:pointer;font-size:11px;font-weight:600">✏️ Modifica</button>
+        <button onclick="_vesaDeleteMag('${m.id}')" style="padding:4px 9px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.35);border-radius:6px;color:#ef4444;cursor:pointer;font-size:11px;font-weight:600">🗑️</button>
+      </div></td>
     </tr>`).join('')}</tbody>
   </table></div>`}`;
 
@@ -7329,6 +7336,115 @@ function _vesaRichiesteRadioPDF() {
   doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(160,160,160);
   doc.text('Alfa Security Group — Security Vestiario',W/2,290,{align:'center'});
   doc.save('richieste_radio_'+new Date().toISOString().split('T')[0]+'.pdf');
+}
+
+function _vesaEditMag(id) {
+  const m = window._VESA.mag.find(x=>x.id===id); if(!m) return;
+  openModal(`<div class="modal-title">
+    <span>✏️ Modifica Stock — ${m.tipo_capo.charAt(0).toUpperCase()+m.tipo_capo.slice(1)} ${m.taglia}</span>
+    <span class="modal-close" onclick="closeModalDirect()">✕</span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">
+    <div><div style="font-size:10px;letter-spacing:1.5px;color:var(--text-muted);text-transform:uppercase;margin-bottom:7px;font-weight:600">Stock Totale</div>
+      <input type="number" id="medit_stock" min="0" value="${m.quantita_stock}" style="width:100%;padding:11px 14px;background:var(--bg3);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;text-align:center;outline:none;font-weight:700"></div>
+    <div><div style="font-size:10px;letter-spacing:1.5px;color:var(--text-muted);text-transform:uppercase;margin-bottom:7px;font-weight:600">Disponibile</div>
+      <input type="number" id="medit_disp" min="0" value="${m.quantita_disponibile}" style="width:100%;padding:11px 14px;background:var(--bg3);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;text-align:center;outline:none;font-weight:700"></div>
+    <div><div style="font-size:10px;letter-spacing:1.5px;color:var(--text-muted);text-transform:uppercase;margin-bottom:7px;font-weight:600">Assegnato</div>
+      <input type="number" id="medit_ass" min="0" value="${m.quantita_assegnata}" style="width:100%;padding:11px 14px;background:var(--bg3);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;text-align:center;outline:none;font-weight:700"></div>
+  </div>
+  <div style="display:flex;gap:10px;justify-content:flex-end">
+    <button class="btn btn-secondary" onclick="closeModalDirect()">Annulla</button>
+    <button class="btn btn-primary" onclick="_vesaEditMagConf('${id}')">💾 Salva</button>
+  </div>`);
+}
+
+async function _vesaEditMagConf(id) {
+  const body = {
+    quantita_stock: parseInt(document.getElementById('medit_stock')?.value)||0,
+    quantita_disponibile: parseInt(document.getElementById('medit_disp')?.value)||0,
+    quantita_assegnata: parseInt(document.getElementById('medit_ass')?.value)||0
+  };
+  try {
+    const r = await apiFetch('/admin/magazzino-vestiario/'+id,{method:'PATCH',body:JSON.stringify(body)});
+    const idx = window._VESA.mag.findIndex(x=>x.id===id);
+    if(idx>=0) window._VESA.mag[idx] = r;
+    closeModalDirect(); showToast('✓ Stock aggiornato');
+    _vesaRender(document.getElementById('content'));
+  } catch(e){ showToast('Errore aggiornamento','error'); }
+}
+
+async function _vesaDeleteMag(id) {
+  const m = window._VESA.mag.find(x=>x.id===id); if(!m) return;
+  if(!confirm('Eliminare '+m.tipo_capo+' taglia '+m.taglia+' dal magazzino?')) return;
+  try {
+    await apiFetch('/admin/magazzino-vestiario/'+id,{method:'DELETE'});
+    window._VESA.mag = window._VESA.mag.filter(x=>x.id!==id);
+    showToast('✓ Voce eliminata');
+    _vesaRender(document.getElementById('content'));
+  } catch(e){ showToast('Errore eliminazione','error'); }
+}
+
+function _vesaMagPDF() {
+  const mag = window._VESA.mag;
+  const {jsPDF} = window.jspdf; if(!jsPDF){showToast('Libreria PDF non disponibile','error');return;}
+  const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const W=210, M=18; let y=M;
+  doc.setFillColor(10,10,10); doc.rect(0,0,W,30,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(201,162,39);
+  doc.text('ALFA SECURITY GROUP', M, 12);
+  doc.setFontSize(10); doc.setTextColor(210,210,210);
+  doc.text('Magazzino Vestiario — Riepilogo Stock', M, 21);
+  doc.setFontSize(8); doc.setTextColor(150,150,150);
+  doc.text('Data: '+new Date().toLocaleDateString('it-IT')+' '+new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}), W-M, 21, {align:'right'});
+  y = 40;
+  if(mag.length===0){
+    doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(80,80,80);
+    doc.text('Nessun articolo in magazzino.', M, y);
+  } else {
+    // Intestazione tabella
+    doc.setFillColor(201,162,39); doc.rect(M,y,W-M*2,8,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(0,0,0);
+    doc.text('Capo', M+3, y+5.5);
+    doc.text('Taglia', M+48, y+5.5);
+    doc.text('Totale', M+75, y+5.5, {align:'right'});
+    doc.text('Disponibile', M+105, y+5.5, {align:'right'});
+    doc.text('Assegnato', M+135, y+5.5, {align:'right'});
+    doc.text('Aggiornamento', W-M, y+5.5, {align:'right'});
+    y += 10;
+    mag.forEach((m,i)=>{
+      if(y>272){doc.addPage();y=20;}
+      if(i%2===0){doc.setFillColor(246,246,246); doc.rect(M,y-1,W-M*2,9,'F');}
+      doc.setFont('helvetica',m.quantita_disponibile===0?'bold':'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(m.quantita_disponibile===0?180:30, m.quantita_disponibile===0?50:30, m.quantita_disponibile===0?50:30);
+      const capoLabel = m.tipo_capo.charAt(0).toUpperCase()+m.tipo_capo.slice(1)+' Security';
+      doc.text(capoLabel, M+3, y+5.5);
+      doc.setTextColor(30,30,30);
+      doc.text(m.taglia, M+48, y+5.5);
+      doc.text(String(m.quantita_stock), M+75, y+5.5, {align:'right'});
+      doc.setTextColor(m.quantita_disponibile>0?0:180, m.quantita_disponibile>0?130:50, m.quantita_disponibile>0?0:50);
+      doc.text(String(m.quantita_disponibile), M+105, y+5.5, {align:'right'});
+      doc.setTextColor(80,80,80);
+      doc.text(String(m.quantita_assegnata), M+135, y+5.5, {align:'right'});
+      const dataAgg = m.data_aggiornamento ? new Date(m.data_aggiornamento).toLocaleDateString('it-IT') : '—';
+      doc.text(dataAgg, W-M, y+5.5, {align:'right'});
+      y+=9;
+    });
+    y+=5;
+    doc.setDrawColor(201,162,39); doc.setLineWidth(0.4); doc.line(M,y,W-M,y); y+=6;
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(201,162,39);
+    const totStock = mag.reduce((s,m)=>s+m.quantita_stock,0);
+    const totDisp = mag.reduce((s,m)=>s+m.quantita_disponibile,0);
+    const totAss = mag.reduce((s,m)=>s+m.quantita_assegnata,0);
+    doc.text('TOTALE:', M+3, y);
+    doc.setTextColor(30,30,30);
+    doc.text(String(totStock), M+75, y, {align:'right'});
+    doc.text(String(totDisp), M+105, y, {align:'right'});
+    doc.text(String(totAss), M+135, y, {align:'right'});
+  }
+  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(160,160,160);
+  doc.text('Alfa Security Group — Magazzino Vestiario', W/2, 290, {align:'center'});
+  doc.save('magazzino_vestiario_'+new Date().toISOString().split('T')[0]+'.pdf');
 }
 
 function _vesaSetTab(t){

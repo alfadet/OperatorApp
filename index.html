@@ -6834,6 +6834,7 @@ async function renderUserVestiario(content) {
   let scheda = null;
   try { scheda = await apiFetch('/vestiario/mio'); } catch(e) {}
   window._VESTF.foto = [];
+  window._VESTF.radio = scheda?.radio_stato || null;
   if (scheda?.foto1) window._VESTF.foto.push({data:scheda.foto1});
   if (scheda?.foto2) window._VESTF.foto.push({data:scheda.foto2});
   if (scheda?.foto3) window._VESTF.foto.push({data:scheda.foto3});
@@ -6868,7 +6869,9 @@ async function renderUserVestiario(content) {
     .vest-toggle.on{background:rgba(201,162,39,0.15);border-color:var(--gold);color:var(--gold)}
     .vest-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:22px;margin-bottom:14px}
     .vest-card-title{display:flex;align-items:center;gap:10px;font-family:'Cinzel',serif;font-size:13px;color:var(--gold);letter-spacing:1px;margin-bottom:18px;padding-bottom:10px;border-bottom:1px solid rgba(201,162,39,0.15)}
-    .vest-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;align-items:end}
+    .vest-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:end}
+    .vest-radio-opt{padding:14px 10px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg3);color:var(--text-muted);cursor:pointer;font-size:12px;font-weight:600;transition:all .15s;text-align:center;width:100%}
+    .vest-radio-opt.on{background:rgba(201,162,39,0.15);border-color:var(--gold);color:var(--gold)}
     .vest-lbl{font-size:10px;letter-spacing:1.5px;color:var(--text-muted);text-transform:uppercase;margin-bottom:7px;font-weight:600}
     .vest-sel{width:100%;padding:10px 14px;background:var(--bg3);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;outline:none;transition:border-color .2s}
     .vest-sel:focus{border-color:var(--gold)}
@@ -6895,9 +6898,26 @@ async function renderUserVestiario(content) {
         <div><div class="vest-lbl">Taglia</div>
           <select class="vest-sel" id="vest_${c.key}_taglia"><option value="">— Seleziona —</option>${tagliOpts(scheda?.[c.key+'_taglia'])}</select></div>
         <div><div class="vest-lbl">Già in possesso</div>${siNo('vest_'+c.key+'_possesso',scheda?.[c.key+'_possesso']||'')}</div>
-        <div><div class="vest-lbl">Radio</div>${siNo('vest_'+c.key+'_radio',scheda?.[c.key+'_radio']||'')}</div>
       </div>
     </div>`).join('')}
+    <div class="vest-card" style="margin-top:4px">
+      <div class="vest-card-title"><span style="font-size:20px">📻</span>Dotazione Radio</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Seleziona la tua situazione radio:</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+        <button type="button" onclick="_vestSetRadio('personale')" id="radio_btn_personale" class="vest-radio-opt ${window._VESTF.radio==='personale'?'on':''}">
+          <div style="font-size:22px;margin-bottom:6px">📱</div>
+          <div>Ho radio personale</div>
+        </button>
+        <button type="button" onclick="_vestSetRadio('aziendale')" id="radio_btn_aziendale" class="vest-radio-opt ${window._VESTF.radio==='aziendale'?'on':''}">
+          <div style="font-size:22px;margin-bottom:6px">📡</div>
+          <div>Richiedo radio aziendale</div>
+        </button>
+        <button type="button" onclick="_vestSetRadio('nessuna')" id="radio_btn_nessuna" class="vest-radio-opt ${window._VESTF.radio==='nessuna'?'on':''}">
+          <div style="font-size:22px;margin-bottom:6px">🚫</div>
+          <div>Nessuna radio</div>
+        </button>
+      </div>
+    </div>
     <div class="vest-card" style="margin-top:4px">
       <div class="vest-card-title"><span style="font-size:20px">🔄</span>Richiesta Sostituzione</div>
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:16px">
@@ -6937,6 +6957,13 @@ async function renderUserVestiario(content) {
   _vestRenderFoto();
 }
 
+function _vestSetRadio(val) {
+  window._VESTF.radio = val;
+  ['personale','aziendale','nessuna'].forEach(v => {
+    const b = document.getElementById('radio_btn_'+v);
+    if(b) b.classList.toggle('on', v===val);
+  });
+}
 function _vestToggle(id, val) {
   ['SI','NO'].forEach(v => { const b=document.getElementById(id+'_'+v); if(b) b.classList.toggle('on',v===val); });
 }
@@ -6970,7 +6997,8 @@ function _vestAddFoto(input) {
 }
 async function _vestSalva() {
   const capiKeys=['giacca','maglietta','pantaloni','felpa']; const body={};
-  capiKeys.forEach(k=>{body[k+'_taglia']=document.getElementById('vest_'+k+'_taglia')?.value||null;body[k+'_possesso']=_vestGetToggle('vest_'+k+'_possesso');body[k+'_radio']=_vestGetToggle('vest_'+k+'_radio');});
+  capiKeys.forEach(k=>{body[k+'_taglia']=document.getElementById('vest_'+k+'_taglia')?.value||null;body[k+'_possesso']=_vestGetToggle('vest_'+k+'_possesso');});
+  body.radio_stato = window._VESTF.radio || null;
   if(document.getElementById('vest_richiedi')?.checked){
     body.richiesta_capo=document.getElementById('vest_rich_capo')?.value||null;
     body.richiesta_motivo=document.getElementById('vest_rich_motivo')?.value||null;
@@ -7047,7 +7075,7 @@ function _vesaRender(content) {
   const schHtml = filtSch.length===0
     ? `<div style="padding:40px;text-align:center;color:var(--text-muted)">Nessuna scheda trovata</div>`
     : `<div style="display:flex;flex-direction:column;gap:12px">${filtSch.map(s=>`
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px 20px">
+      <div onclick="_vesaDettaglioOp('${s.id}')" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px 20px;cursor:pointer" onmouseover="this.style.borderColor='rgba(201,162,39,0.35)'" onmouseout="this.style.borderColor='var(--border)'">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)">
           ${av(s.nome_operatore,s.cognome_operatore)}
           <div style="font-weight:700;font-size:14px">${s.nome_operatore||''} ${s.cognome_operatore||''}</div>
@@ -7110,7 +7138,8 @@ function _vesaRender(content) {
       <div style="padding:14px 16px;background:var(--bg2);border:1px solid rgba(245,158,11,0.3);border-radius:11px"><div style="font-size:9px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">In Valutazione</div><div style="font-size:22px;font-weight:700;color:#f59e0b">${inVal}</div></div>
       <div style="padding:14px 16px;background:var(--bg2);border:1px solid rgba(16,185,129,0.3);border-radius:11px"><div style="font-size:9px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">Approvate</div><div style="font-size:22px;font-weight:700;color:#10b981">${appr}</div></div>
       <div style="padding:14px 16px;background:var(--bg2);border:1px solid rgba(239,68,68,0.3);border-radius:11px"><div style="font-size:9px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">Non Approvate</div><div style="font-size:22px;font-weight:700;color:#ef4444">${nonAppr}</div></div>
-      ${CAPI_KEYS.map(c=>`<div style="padding:14px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:11px"><div style="font-size:9px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">${c.icon} Senza ${c.label}</div><div style="font-size:22px;font-weight:700;color:${schede.filter(s=>!s[c.key+'_taglia']).length>0?'#f59e0b':'#10b981'}">${schede.filter(s=>!s[c.key+'_taglia']).length}</div></div>`).join('')}
+      ${CAPI_KEYS.map(c=>{const cnt=schede.filter(s=>!s[c.key+'_taglia']).length;return`<div onclick="_vesaSenzaCapo('${c.key}')" style="padding:14px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:11px;cursor:pointer" onmouseover="this.style.borderColor='rgba(201,162,39,0.4)'" onmouseout="this.style.borderColor='var(--border)'"><div style="font-size:9px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">${c.icon} Senza ${c.label}</div><div style="font-size:22px;font-weight:700;color:${cnt>0?'#f59e0b':'#10b981'}">${cnt}</div><div style="font-size:9px;color:var(--text-muted);margin-top:3px">↗ vedi lista</div></div>`;}).join('')}
+      <div onclick="_vesaRichiesteRadio()" style="padding:14px 16px;background:var(--bg2);border:1px solid ${schede.filter(s=>s.radio_stato==='aziendale').length>0?'rgba(245,158,11,0.35)':'var(--border)'};border-radius:11px;cursor:pointer" onmouseover="this.style.borderColor='rgba(201,162,39,0.4)'" onmouseout="this.style.borderColor='var(--border)'"><div style="font-size:9px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">📡 Richieste Radio Aziendale</div><div style="font-size:22px;font-weight:700;color:${schede.filter(s=>s.radio_stato==='aziendale').length>0?'#f59e0b':'#10b981'}">${schede.filter(s=>s.radio_stato==='aziendale').length}</div><div style="font-size:9px;color:var(--text-muted);margin-top:3px">↗ vedi lista</div></div>
     </div>
 
     <!-- FILTRI -->
@@ -7145,6 +7174,157 @@ function _vesaRender(content) {
       ${tab==='richieste'?richHtml:tab==='schede'?schHtml:magHtml}
     </div>
   </div>`;
+}
+
+function _vesaDettaglioOp(id) {
+  const s = window._VESA.data.find(x=>x.id===id); if(!s) return;
+  const CK=[{key:'giacca',label:'Giacca',icon:'🧥'},{key:'maglietta',label:'Maglietta',icon:'👕'},{key:'pantaloni',label:'Pantaloni',icon:'👖'},{key:'felpa',label:'Felpa',icon:'🧤'}];
+  const radioLabel = {personale:'📱 Radio Personale',aziendale:'📡 Richiede Radio Aziendale',nessuna:'🚫 Nessuna Radio'};
+  openModal(`<div class="modal-title">
+    <span>👔 ${s.nome_operatore||''} ${s.cognome_operatore||''} — Scheda Dotazione</span>
+    <span class="modal-close" onclick="closeModalDirect()">✕</span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px">
+    ${CK.map(c=>`<div style="padding:14px;background:var(--bg3);border:1px solid ${s[c.key+'_taglia']?'rgba(201,162,39,0.3)':'rgba(239,68,68,0.3)'};border-radius:10px">
+      <div style="font-size:18px;margin-bottom:5px">${c.icon}</div>
+      <div style="font-size:10px;letter-spacing:1px;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px">${c.label}</div>
+      <div style="font-size:18px;font-weight:700;color:${s[c.key+'_taglia']?'var(--gold)':'#ef4444'}">${s[c.key+'_taglia']||'Non indicata'}</div>
+      <div style="font-size:10px;color:var(--text-muted);margin-top:4px">Già in possesso: <strong>${s[c.key+'_possesso']||'—'}</strong></div>
+    </div>`).join('')}
+  </div>
+  <div style="padding:14px;background:var(--bg3);border:1px solid ${s.radio_stato==='aziendale'?'rgba(245,158,11,0.4)':'var(--border)'};border-radius:10px;margin-bottom:14px">
+    <div style="font-size:10px;letter-spacing:1px;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px">📻 Stato Radio</div>
+    <div style="font-size:14px;font-weight:700;color:${s.radio_stato==='aziendale'?'#f59e0b':s.radio_stato==='personale'?'#10b981':'var(--text-muted)'}">${s.radio_stato?radioLabel[s.radio_stato]||s.radio_stato:'Non indicato'}</div>
+  </div>
+  ${s.richiesta_capo?`<div style="padding:12px;background:rgba(245,158,11,0.05);border:1px solid rgba(245,158,11,0.2);border-radius:10px">
+    <div style="font-size:10px;letter-spacing:1px;color:#f59e0b;text-transform:uppercase;margin-bottom:6px">🔄 Richiesta Sostituzione</div>
+    <div style="font-size:13px"><strong>${s.richiesta_capo}</strong> — ${s.richiesta_motivo||'—'}${s.richiesta_altro?' ('+s.richiesta_altro+')':''}</div>
+  </div>`:''}
+  `);
+}
+
+function _vesaSenzaCapo(capo) {
+  const ICONE={giacca:'🧥',maglietta:'👕',pantaloni:'👖',felpa:'🧤'};
+  const lista=window._VESA.data.filter(s=>!s[capo+'_taglia']);
+  const capLabel=capo.charAt(0).toUpperCase()+capo.slice(1);
+  const icon=ICONE[capo]||'👔';
+  openModal(`<div class="modal-title">
+    <span>${icon} Operatori senza ${capLabel} (${lista.length})</span>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button onclick="_vesaSenzaCapoPDF('${capo}')" style="padding:5px 12px;background:rgba(201,162,39,0.15);border:1.5px solid var(--gold);border-radius:8px;color:var(--gold);cursor:pointer;font-size:11px;font-weight:700">📄 PDF</button>
+      <span class="modal-close" onclick="closeModalDirect()">✕</span>
+    </div>
+  </div>
+  ${lista.length===0
+    ?`<div style="padding:30px;text-align:center;color:var(--text-muted)">✅ Tutti gli operatori hanno ${capLabel}</div>`
+    :`<div class="table-wrap"><table class="admin-exp-table">
+      <thead><tr><th>#</th><th>Operatore</th><th>Già in possesso</th></tr></thead>
+      <tbody>${lista.map((s,i)=>`<tr>
+        <td style="color:var(--text-muted)">${i+1}</td>
+        <td style="font-weight:600">${s.nome_operatore||''} ${s.cognome_operatore||''}</td>
+        <td>${s[capo+'_possesso']||'—'}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>`}
+  `);
+}
+
+function _vesaSenzaCapoPDF(capo) {
+  const {jsPDF}=window.jspdf; if(!jsPDF){showToast('Libreria PDF non disponibile','error');return;}
+  const lista=window._VESA.data.filter(s=>!s[capo+'_taglia']);
+  const capLabel=capo.charAt(0).toUpperCase()+capo.slice(1);
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const W=210,M=18; let y=M;
+  doc.setFillColor(15,15,15); doc.rect(0,0,W,28,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.setTextColor(201,162,39);
+  doc.text('ALFA SECURITY GROUP',M,11);
+  doc.setFontSize(10); doc.setTextColor(180,180,180);
+  doc.text('Operatori senza '+capLabel+' Security',M,19);
+  doc.setFontSize(8); doc.setTextColor(140,140,140);
+  doc.text('Data: '+new Date().toLocaleDateString('it-IT')+' '+new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}),W-M,19,{align:'right'});
+  y=38;
+  if(lista.length===0){
+    doc.setFontSize(11); doc.setTextColor(80,80,80);
+    doc.text('Tutti gli operatori hanno dotazione '+capLabel+' completa.',M,y);
+  } else {
+    doc.setFillColor(201,162,39); doc.rect(M,y,W-M*2,7,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(0,0,0);
+    doc.text('#',M+2,y+5); doc.text('Operatore',M+14,y+5); doc.text('Già in possesso',M+90,y+5);
+    y+=9;
+    lista.forEach((s,i)=>{
+      if(y>275){doc.addPage();y=20;}
+      if(i%2===0){doc.setFillColor(245,245,245);doc.rect(M,y-1,W-M*2,8,'F');}
+      doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(30,30,30);
+      doc.text(String(i+1),M+2,y+5);
+      doc.text((s.nome_operatore||'')+' '+(s.cognome_operatore||''),M+14,y+5);
+      doc.text(s[capo+'_possesso']||'—',M+90,y+5);
+      y+=8;
+    });
+    y+=4;
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(201,162,39);
+    doc.text('Totale: '+lista.length+' operator'+(lista.length===1?'e':'i'),M,y);
+  }
+  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(160,160,160);
+  doc.text('Alfa Security Group — Security Vestiario',W/2,290,{align:'center'});
+  doc.save('senza_'+capo+'_'+new Date().toISOString().split('T')[0]+'.pdf');
+}
+
+function _vesaRichiesteRadio() {
+  const lista=window._VESA.data.filter(s=>s.radio_stato==='aziendale');
+  openModal(`<div class="modal-title">
+    <span>📡 Richieste Radio Aziendale (${lista.length})</span>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button onclick="_vesaRichiesteRadioPDF()" style="padding:5px 12px;background:rgba(201,162,39,0.15);border:1.5px solid var(--gold);border-radius:8px;color:var(--gold);cursor:pointer;font-size:11px;font-weight:700">📄 PDF</button>
+      <span class="modal-close" onclick="closeModalDirect()">✕</span>
+    </div>
+  </div>
+  ${lista.length===0
+    ?`<div style="padding:30px;text-align:center;color:var(--text-muted)">Nessuna richiesta radio aziendale</div>`
+    :`<div class="table-wrap"><table class="admin-exp-table">
+      <thead><tr><th>#</th><th>Operatore</th></tr></thead>
+      <tbody>${lista.map((s,i)=>`<tr>
+        <td style="color:var(--text-muted)">${i+1}</td>
+        <td style="font-weight:600">${s.nome_operatore||''} ${s.cognome_operatore||''}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>`}
+  `);
+}
+
+function _vesaRichiesteRadioPDF() {
+  const {jsPDF}=window.jspdf; if(!jsPDF){showToast('Libreria PDF non disponibile','error');return;}
+  const lista=window._VESA.data.filter(s=>s.radio_stato==='aziendale');
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const W=210,M=18; let y=M;
+  doc.setFillColor(15,15,15); doc.rect(0,0,W,28,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.setTextColor(201,162,39);
+  doc.text('ALFA SECURITY GROUP',M,11);
+  doc.setFontSize(10); doc.setTextColor(180,180,180);
+  doc.text('Richieste Radio Aziendale',M,19);
+  doc.setFontSize(8); doc.setTextColor(140,140,140);
+  doc.text('Data: '+new Date().toLocaleDateString('it-IT')+' '+new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}),W-M,19,{align:'right'});
+  y=38;
+  if(lista.length===0){
+    doc.setFontSize(11); doc.setTextColor(80,80,80);
+    doc.text('Nessuna richiesta radio aziendale.',M,y);
+  } else {
+    doc.setFillColor(201,162,39); doc.rect(M,y,W-M*2,7,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(0,0,0);
+    doc.text('#',M+2,y+5); doc.text('Operatore',M+14,y+5);
+    y+=9;
+    lista.forEach((s,i)=>{
+      if(y>275){doc.addPage();y=20;}
+      if(i%2===0){doc.setFillColor(245,245,245);doc.rect(M,y-1,W-M*2,8,'F');}
+      doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(30,30,30);
+      doc.text(String(i+1),M+2,y+5);
+      doc.text((s.nome_operatore||'')+' '+(s.cognome_operatore||''),M+14,y+5);
+      y+=8;
+    });
+    y+=4;
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(201,162,39);
+    doc.text('Totale: '+lista.length+' operator'+(lista.length===1?'e':'i'),M,y);
+  }
+  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(160,160,160);
+  doc.text('Alfa Security Group — Security Vestiario',W/2,290,{align:'center'});
+  doc.save('richieste_radio_'+new Date().toISOString().split('T')[0]+'.pdf');
 }
 
 function _vesaSetTab(t){window._VESA.tab=t;_vesaRender(document.getElementById('content'));}

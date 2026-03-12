@@ -51,6 +51,12 @@ pool.query(`
   );
 `).catch(e => console.error('Vestiario tables init error:', e.message));
 
+// ── ADD RADIO_STATO COLUMN IF MISSING ─────────────────────────────────────────
+pool.query(`DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='security_vestiario' AND column_name='radio_stato')
+  THEN ALTER TABLE security_vestiario ADD COLUMN radio_stato TEXT; END IF;
+END $$;`).catch(e => console.error('radio_stato migration error:', e.message));
+
 // ── Auth middleware ──────────────────────────────────────────────────────────
 function auth(req, res, next) {
   const h = req.headers.authorization;
@@ -931,7 +937,7 @@ app.post('/api/vestiario', auth, async (req, res) => {
             pantaloni_taglia, pantaloni_possesso, pantaloni_radio,
             felpa_taglia, felpa_possesso, felpa_radio,
             richiesta_capo, richiesta_motivo, richiesta_altro,
-            foto1, foto2, foto3 } = req.body;
+            foto1, foto2, foto3, radio_stato } = req.body;
     const u = await pool.query('SELECT nome, cognome FROM users WHERE id=$1', [req.user.id]);
     const nome = u.rows[0]?.nome || ''; const cognome = u.rows[0]?.cognome || '';
     const hasReq = !!(richiesta_capo);
@@ -944,18 +950,18 @@ app.post('/api/vestiario', auth, async (req, res) => {
         pantaloni_taglia=$9, pantaloni_possesso=$10, pantaloni_radio=$11,
         felpa_taglia=$12, felpa_possesso=$13, felpa_radio=$14,
         richiesta_capo=$15, richiesta_motivo=$16, richiesta_altro=$17,
-        foto1=$18, foto2=$19, foto3=$20,
-        stato_richiesta=CASE WHEN $21 THEN 'in_valutazione' ELSE stato_richiesta END,
-        motivazione_admin=CASE WHEN $21 THEN NULL ELSE motivazione_admin END,
-        data_richiesta=CASE WHEN $21 THEN NOW() ELSE data_richiesta END
-        WHERE operatore_id=$22 RETURNING *`,
+        foto1=$18, foto2=$19, foto3=$20, radio_stato=$21,
+        stato_richiesta=CASE WHEN $22 THEN 'in_valutazione' ELSE stato_richiesta END,
+        motivazione_admin=CASE WHEN $22 THEN NULL ELSE motivazione_admin END,
+        data_richiesta=CASE WHEN $22 THEN NOW() ELSE data_richiesta END
+        WHERE operatore_id=$23 RETURNING *`,
         [nome, cognome,
          giacca_taglia||null, giacca_possesso||null, giacca_radio||null,
          maglietta_taglia||null, maglietta_possesso||null, maglietta_radio||null,
          pantaloni_taglia||null, pantaloni_possesso||null, pantaloni_radio||null,
          felpa_taglia||null, felpa_possesso||null, felpa_radio||null,
          richiesta_capo||null, richiesta_motivo||null, richiesta_altro||null,
-         foto1||null, foto2||null, foto3||null, hasReq, req.user.id]);
+         foto1||null, foto2||null, foto3||null, radio_stato||null, hasReq, req.user.id]);
       return res.json(r.rows[0]);
     }
     const id = uuidv4();
@@ -966,17 +972,17 @@ app.post('/api/vestiario', auth, async (req, res) => {
        pantaloni_taglia, pantaloni_possesso, pantaloni_radio,
        felpa_taglia, felpa_possesso, felpa_radio,
        richiesta_capo, richiesta_motivo, richiesta_altro,
-       foto1, foto2, foto3, stato_richiesta, data_richiesta)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,
-        CASE WHEN $23 THEN 'in_valutazione' ELSE NULL END,
-        CASE WHEN $23 THEN NOW() ELSE NULL END) RETURNING *`,
+       foto1, foto2, foto3, radio_stato, stato_richiesta, data_richiesta)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,
+        CASE WHEN $24 THEN 'in_valutazione' ELSE NULL END,
+        CASE WHEN $24 THEN NOW() ELSE NULL END) RETURNING *`,
       [id, req.user.id, nome, cognome,
        giacca_taglia||null, giacca_possesso||null, giacca_radio||null,
        maglietta_taglia||null, maglietta_possesso||null, maglietta_radio||null,
        pantaloni_taglia||null, pantaloni_possesso||null, pantaloni_radio||null,
        felpa_taglia||null, felpa_possesso||null, felpa_radio||null,
        richiesta_capo||null, richiesta_motivo||null, richiesta_altro||null,
-       foto1||null, foto2||null, foto3||null, hasReq]);
+       foto1||null, foto2||null, foto3||null, radio_stato||null, hasReq]);
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({error:e.message}); }
 });

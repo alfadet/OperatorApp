@@ -51,6 +51,20 @@ pool.query(`
   );
 `).catch(e => console.error('Vestiario tables init error:', e.message));
 
+// ── PRIMA FORNITURE TABLE ──────────────────────────────────────────────────────
+pool.query(`CREATE TABLE IF NOT EXISTS prime_forniture (
+  id TEXT PRIMARY KEY,
+  operatore_id TEXT REFERENCES users(id),
+  nome_operatore TEXT, cognome_operatore TEXT,
+  admin_id TEXT, admin_nome TEXT,
+  giacca INTEGER DEFAULT 0, maglietta INTEGER DEFAULT 0,
+  pantaloni INTEGER DEFAULT 0, felpa INTEGER DEFAULT 0, radio INTEGER DEFAULT 0,
+  note TEXT,
+  data_fornitura TIMESTAMPTZ DEFAULT NOW(),
+  messaggio_inviato BOOLEAN DEFAULT FALSE,
+  messaggio_inviato_at TIMESTAMPTZ
+);`).catch(e => console.error('prime_forniture table error:', e.message));
+
 // ── ADD RADIO_STATO COLUMN IF MISSING ─────────────────────────────────────────
 pool.query(`DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='security_vestiario' AND column_name='radio_stato')
@@ -1031,6 +1045,65 @@ app.post('/api/admin/magazzino-vestiario', auth, adminOnly, async (req, res) => 
         data_aggiornamento=NOW()
       RETURNING *`, [id, tipo_capo, taglia, q]);
     res.json(r.rows[0]);
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+// ── PRIMA FORNITURE ───────────────────────────────────────────────────────────
+app.get('/api/admin/prime-forniture', auth, adminOnly, async (req, res) => {
+  try {
+    const { search } = req.query;
+    let q = 'SELECT * FROM prime_forniture';
+    const params = [];
+    if (search) {
+      params.push('%' + search.toLowerCase() + '%');
+      q += ` WHERE LOWER(COALESCE(nome_operatore,'')||' '||COALESCE(cognome_operatore,'')) LIKE $1`;
+    }
+    q += ' ORDER BY data_fornitura DESC';
+    const r = await pool.query(q, params);
+    res.json(r.rows);
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.post('/api/admin/prime-forniture', auth, adminOnly, async (req, res) => {
+  try {
+    const { operatore_id, giacca, maglietta, pantaloni, felpa, radio, note } = req.body;
+    const u = await pool.query('SELECT nome, cognome FROM users WHERE id=$1', [operatore_id]);
+    if (!u.rows.length) return res.status(404).json({error:'Operatore non trovato'});
+    const op = u.rows[0];
+    const adm = await pool.query('SELECT nome, cognome FROM users WHERE id=$1', [req.user.id]);
+    const adminNome = adm.rows[0] ? (adm.rows[0].nome||'')+' '+(adm.rows[0].cognome||'') : 'Admin';
+    const id = uuidv4();
+    const r = await pool.query(
+      `INSERT INTO prime_forniture (id,operatore_id,nome_operatore,cognome_operatore,admin_id,admin_nome,giacca,maglietta,pantaloni,felpa,radio,note,data_fornitura)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NOW()) RETURNING *`,
+      [id, operatore_id, op.nome||'', op.cognome||'', req.user.id, adminNome.trim(),
+       parseInt(giacca)||0, parseInt(maglietta)||0, parseInt(pantaloni)||0,
+       parseInt(felpa)||0, parseInt(radio)||0, note||null]);
+    res.json(r.rows[0]);
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.post('/api/admin/prime-forniture/:id/invia', auth, adminOnly, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM prime_forniture WHERE id=$1', [req.params.id]);
+    if (!r.rows.length) return res.status(404).json({error:'Fornitura non trovata'});
+    const f = r.rows[0];
+    const data = new Date(f.data_fornitura).toLocaleDateString('it-IT', {day:'2-digit',month:'2-digit',year:'numeric'});
+    const righe = [];
+    if (f.giacca > 0) righe.push(`• Giacca Security: ${f.giacca} pz`);
+    if (f.maglietta > 0) righe.push(`• Maglietta Security: ${f.maglietta} pz`);
+    if (f.pantaloni > 0) righe.push(`• Pantaloni Security: ${f.pantaloni} pz`);
+    if (f.felpa > 0) righe.push(`• Felpa Security: ${f.felpa} pz`);
+    if (f.radio > 0) righe.push(`• Radio: ${f.radio} pz`);
+    const testo = `📦 FORNITURA VESTIARIO SECURITY\n\nData consegna: ${data}\n\n${righe.join('\n')}${f.note?'\n\nNote: '+f.note:''}\n\n—\nFornitura abbigliamento security in concordato col regolamento aziendale da Lei sottoscritto.`;
+    const msgId = uuidv4();
+    await pool.query(
+      'INSERT INTO messages (id,testo,is_broadcast,target_user_id,created_at) VALUES ($1,$2,FALSE,$3,NOW())',
+      [msgId, testo, f.operatore_id]);
+    await pool.query('UPDATE prime_forniture SET messaggio_inviato=TRUE, messaggio_inviato_at=NOW() WHERE id=$1', [req.params.id]);
+    const ids = await getPushIds([f.operatore_id]);
+    await sendPush(ids, '📦 Fornitura Vestiario Security', `Data: ${data} — ${righe.length} articoli`);
+    res.json({ok:true});
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 

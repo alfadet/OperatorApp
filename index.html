@@ -6828,6 +6828,7 @@ function toggleAppTheme() {
 
 window._VESTF = { foto: [] };
 window._VESA  = { tab:'richieste', search:'', stato:'tutti', data:[], mag:[] };
+window._VESAPF = { search:'', data:[], users:[], loaded:false };
 
 async function renderUserVestiario(content) {
   content.innerHTML = `<div style="padding:60px;text-align:center;color:var(--text-muted)"><div style="font-size:28px;margin-bottom:10px">👔</div>Caricamento...</div>`;
@@ -7023,6 +7024,7 @@ async function renderAdminVestiario(content) {
 function _vesaRender(content) {
   const schede=window._VESA.data; const mag=window._VESA.mag;
   const tab=window._VESA.tab; const search=window._VESA.search.toLowerCase(); const statoF=window._VESA.stato;
+  const pf=window._VESAPF;
   const CAPI_KEYS=[{key:'giacca',label:'Giacca',icon:'🧥'},{key:'maglietta',label:'Maglietta',icon:'👕'},{key:'pantaloni',label:'Pantaloni',icon:'👖'},{key:'felpa',label:'Felpa',icon:'🧤'}];
   const richieste=schede.filter(s=>s.richiesta_capo);
   const inVal=richieste.filter(s=>s.stato_richiesta==='in_valutazione').length;
@@ -7164,15 +7166,16 @@ function _vesaRender(content) {
     </div>
 
     <!-- TABS -->
-    <div style="display:flex;gap:8px;margin-bottom:18px">
+    <div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap">
       <button onclick="_vesaSetTab('richieste')" class="vesa-tab ${tab==='richieste'?'on':''}">🔄 Richieste Sostituzione (${richieste.length})</button>
       <button onclick="_vesaSetTab('schede')" class="vesa-tab ${tab==='schede'?'on':''}">📋 Schede Operatori (${schede.length})</button>
       <button onclick="_vesaSetTab('magazzino')" class="vesa-tab ${tab==='magazzino'?'on':''}">📦 Magazzino</button>
+      <button onclick="_vesaSetTab('prima_fornitura')" style="padding:8px 18px;border:1.5px solid ${tab==='prima_fornitura'?'#10b981':'rgba(16,185,129,0.5)'};border-radius:8px;background:${tab==='prima_fornitura'?'rgba(16,185,129,0.2)':'rgba(16,185,129,0.08)'};color:#10b981;cursor:pointer;font-size:12px;font-weight:700;letter-spacing:0.5px">📦 Prima Fornitura</button>
     </div>
 
     <!-- CONTENUTO TAB -->
     <div id="vesa_tab_content">
-      ${tab==='richieste'?richHtml:tab==='schede'?schHtml:magHtml}
+      ${tab==='richieste'?richHtml:tab==='schede'?schHtml:tab==='prima_fornitura'?_vesaPFHtml(pf):magHtml}
     </div>
   </div>`;
 }
@@ -7328,7 +7331,194 @@ function _vesaRichiesteRadioPDF() {
   doc.save('richieste_radio_'+new Date().toISOString().split('T')[0]+'.pdf');
 }
 
-function _vesaSetTab(t){window._VESA.tab=t;_vesaRender(document.getElementById('content'));}
+function _vesaSetTab(t){
+  window._VESA.tab=t;
+  _vesaRender(document.getElementById('content'));
+  if(t==='prima_fornitura') _vesaLoadPF();
+}
+
+// ── PRIMA FORNITURA ───────────────────────────────────────────────────────────
+function _vesaPFHtml(pf) {
+  const CAPI_PF=[{k:'giacca',l:'Giacca',i:'🧥'},{k:'maglietta',l:'Maglietta',i:'👕'},{k:'pantaloni',l:'Pantaloni',i:'👖'},{k:'felpa',l:'Felpa',i:'🧤'},{k:'radio',l:'Radio',i:'📻'}];
+  const fmtD=ts=>ts?new Date(ts).toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric'}):'—';
+  const filtData=pf.data.filter(f=>{
+    if(!pf.search) return true;
+    return ((f.nome_operatore||'')+' '+(f.cognome_operatore||'')).toLowerCase().includes(pf.search.toLowerCase());
+  });
+  return `
+  <div style="max-width:960px">
+    <div style="background:var(--bg2);border:2px solid rgba(16,185,129,0.35);border-radius:16px;padding:28px;margin-bottom:24px">
+      <div style="font-family:'Cinzel',serif;font-size:14px;color:#10b981;letter-spacing:2px;margin-bottom:22px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:22px">📦</span> NUOVA PRIMA FORNITURA
+      </div>
+      <div style="margin-bottom:18px">
+        <div style="font-size:10px;letter-spacing:1.5px;color:var(--text-muted);text-transform:uppercase;margin-bottom:7px;font-weight:600">Operatore</div>
+        <select id="pf_op" style="width:100%;max-width:420px;padding:11px 14px;background:var(--bg3);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;outline:none">
+          <option value="">— Seleziona operatore —</option>
+          ${pf.users.map(u=>`<option value="${u.id}">${u.cognome||''} ${u.nome||''} — ${u.email}</option>`).join('')}
+        </select>
+        ${!pf.loaded?'<div style="font-size:11px;color:var(--text-muted);margin-top:6px">⏳ Caricamento operatori...</div>':''}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px">
+        ${CAPI_PF.map(c=>`<div>
+          <div style="font-size:10px;letter-spacing:1.5px;color:var(--text-muted);text-transform:uppercase;margin-bottom:7px;font-weight:600">${c.i} ${c.l}</div>
+          <input type="number" id="pf_${c.k}" min="0" value="0" style="width:100%;padding:10px 12px;background:var(--bg3);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:16px;text-align:center;outline:none;font-weight:700" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value==='')this.value='0'">
+        </div>`).join('')}
+      </div>
+      <div style="margin-bottom:20px">
+        <div style="font-size:10px;letter-spacing:1.5px;color:var(--text-muted);text-transform:uppercase;margin-bottom:7px;font-weight:600">Note (opzionale)</div>
+        <textarea id="pf_note" style="width:100%;padding:11px 14px;background:var(--bg3);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;outline:none;resize:vertical;min-height:70px" placeholder="Note aggiuntive..."></textarea>
+      </div>
+      <button onclick="_vesaPFSalva()" style="padding:13px 32px;background:linear-gradient(135deg,#065f46,#10b981);border:none;border-radius:10px;color:#fff;font-weight:700;cursor:pointer;font-size:13px;letter-spacing:1px">💾 Salva Fornitura</button>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:20px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <div style="font-family:'Cinzel',serif;font-size:12px;color:var(--gold);letter-spacing:2px;flex:1">📋 LOG FORNITURE (${pf.data.length})</div>
+        <input id="pf_search" style="padding:8px 12px;background:var(--bg3);border:1.5px solid var(--border);border-radius:9px;color:var(--text);font-size:12px;outline:none;max-width:200px" placeholder="Cerca per nome..." value="${pf.search||''}" oninput="_vesaPFSearch(this.value)">
+      </div>
+      ${filtData.length===0
+        ?`<div style="padding:30px;text-align:center;color:var(--text-muted)">Nessuna fornitura registrata</div>`
+        :`<div class="table-wrap"><table class="admin-exp-table">
+          <thead><tr><th>Data</th><th>Operatore</th><th>🧥</th><th>👕</th><th>👖</th><th>🧤</th><th>📻</th><th>Inviato</th><th>Azioni</th></tr></thead>
+          <tbody>${filtData.map(f=>`<tr>
+            <td style="white-space:nowrap;font-size:11px">${fmtD(f.data_fornitura)}</td>
+            <td style="font-weight:600">${f.nome_operatore||''} ${f.cognome_operatore||''}</td>
+            <td style="text-align:center">${f.giacca>0?`<strong style="color:var(--gold)">${f.giacca}</strong>`:'<span style="color:var(--text-muted)">—</span>'}</td>
+            <td style="text-align:center">${f.maglietta>0?`<strong style="color:var(--gold)">${f.maglietta}</strong>`:'<span style="color:var(--text-muted)">—</span>'}</td>
+            <td style="text-align:center">${f.pantaloni>0?`<strong style="color:var(--gold)">${f.pantaloni}</strong>`:'<span style="color:var(--text-muted)">—</span>'}</td>
+            <td style="text-align:center">${f.felpa>0?`<strong style="color:var(--gold)">${f.felpa}</strong>`:'<span style="color:var(--text-muted)">—</span>'}</td>
+            <td style="text-align:center">${f.radio>0?`<strong style="color:var(--gold)">${f.radio}</strong>`:'<span style="color:var(--text-muted)">—</span>'}</td>
+            <td style="text-align:center">${f.messaggio_inviato?`<span style="color:#10b981;font-size:11px;font-weight:700">✅ ${fmtD(f.messaggio_inviato_at)}</span>`:'<span style="color:var(--text-muted);font-size:11px">No</span>'}</td>
+            <td><div style="display:flex;gap:5px">
+              <button onclick="_vesaPFPDF('${f.id}')" style="padding:4px 9px;background:rgba(201,162,39,0.1);border:1px solid rgba(201,162,39,0.4);border-radius:6px;color:var(--gold);cursor:pointer;font-size:11px;font-weight:600">📄 PDF</button>
+              ${!f.messaggio_inviato?`<button onclick="_vesaPFInvia('${f.id}')" style="padding:4px 9px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.4);border-radius:6px;color:#10b981;cursor:pointer;font-size:11px;font-weight:600">📨 Invia</button>`:''}
+            </div></td>
+          </tr>`).join('')}</tbody>
+        </table></div>`}
+    </div>
+  </div>`;
+}
+
+async function _vesaLoadPF() {
+  try {
+    const [users, data] = await Promise.all([
+      apiFetch('/users'),
+      apiFetch('/admin/prime-forniture')
+    ]);
+    window._VESAPF.users = users;
+    window._VESAPF.data = data;
+    window._VESAPF.loaded = true;
+    if (window._VESA.tab === 'prima_fornitura') _vesaRender(document.getElementById('content'));
+  } catch(e) { showToast('Errore caricamento dati fornitura','error'); }
+}
+
+async function _vesaPFSalva() {
+  const opId = document.getElementById('pf_op')?.value;
+  if (!opId) { showToast('Seleziona un operatore','error'); return; }
+  const body = {
+    operatore_id: opId,
+    giacca: parseInt(document.getElementById('pf_giacca')?.value)||0,
+    maglietta: parseInt(document.getElementById('pf_maglietta')?.value)||0,
+    pantaloni: parseInt(document.getElementById('pf_pantaloni')?.value)||0,
+    felpa: parseInt(document.getElementById('pf_felpa')?.value)||0,
+    radio: parseInt(document.getElementById('pf_radio')?.value)||0,
+    note: document.getElementById('pf_note')?.value||null
+  };
+  const totale = body.giacca+body.maglietta+body.pantaloni+body.felpa+body.radio;
+  if (totale===0) { showToast('Inserisci almeno un articolo','error'); return; }
+  try {
+    const r = await apiFetch('/admin/prime-forniture',{method:'POST',body:JSON.stringify(body)});
+    window._VESAPF.data.unshift(r);
+    showToast('✓ Fornitura salvata');
+    _vesaRender(document.getElementById('content'));
+  } catch(e) { showToast('Errore salvataggio','error'); }
+}
+
+function _vesaPFSearch(v) {
+  window._VESAPF.search = v;
+  _vesaRender(document.getElementById('content'));
+  const inp = document.getElementById('pf_search');
+  if(inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+}
+
+function _vesaPFPDF(id) {
+  const f = window._VESAPF.data.find(x=>x.id===id); if(!f) return;
+  const {jsPDF} = window.jspdf; if(!jsPDF){showToast('Libreria PDF non disponibile','error');return;}
+  const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const W=210, M=20; let y=M;
+  // Header
+  doc.setFillColor(10,10,10); doc.rect(0,0,W,32,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.setTextColor(201,162,39);
+  doc.text('ALFA SECURITY GROUP', M, 13);
+  doc.setFontSize(11); doc.setTextColor(220,220,220);
+  doc.text('FORNITURA VESTIARIO SECURITY', M, 22);
+  doc.setFontSize(8); doc.setTextColor(150,150,150);
+  const dataStr = new Date(f.data_fornitura).toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const oraStr = new Date(f.data_fornitura).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+  doc.text('Data: '+dataStr+' '+oraStr, W-M, 22, {align:'right'});
+  y = 44;
+  // Operatore
+  doc.setFillColor(245,245,245); doc.rect(M,y-5,W-M*2,18,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(30,30,30);
+  doc.text('OPERATORE:', M+4, y+2);
+  doc.setFont('helvetica','normal'); doc.setFontSize(12);
+  doc.text((f.nome_operatore||'')+' '+(f.cognome_operatore||''), M+36, y+2);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(100,100,100);
+  doc.text('Responsabile: '+f.admin_nome, M+4, y+9);
+  y += 22;
+  // Separatore
+  doc.setDrawColor(201,162,39); doc.setLineWidth(0.5); doc.line(M,y,W-M,y); y+=8;
+  // Titolo tabella
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(50,50,50);
+  doc.text('RIEPILOGO ARTICOLI FORNITI', M, y); y+=8;
+  // Tabella
+  const CAPI_PDF=[{k:'giacca',l:'Giacca Security'},{k:'maglietta',l:'Maglietta Security'},{k:'pantaloni',l:'Pantaloni Security'},{k:'felpa',l:'Felpa Security'},{k:'radio',l:'Radio'}];
+  doc.setFillColor(201,162,39); doc.rect(M,y,W-M*2,8,'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(0,0,0);
+  doc.text('Articolo',M+4,y+5.5); doc.text('Quantità',W-M-20,y+5.5,{align:'right'}); y+=10;
+  CAPI_PDF.forEach((c,i)=>{
+    const qty = f[c.k]||0;
+    if(i%2===0){doc.setFillColor(248,248,248); doc.rect(M,y-1,W-M*2,9,'F');}
+    doc.setFont('helvetica',qty>0?'bold':'normal');
+    doc.setFontSize(10); doc.setTextColor(qty>0?30:130,qty>0?30:130,qty>0?30:130);
+    doc.text(c.l, M+4, y+5.5);
+    doc.text(qty>0?String(qty)+' pz':'—', W-M-4, y+5.5, {align:'right'});
+    y+=9;
+  });
+  y+=6;
+  // Note
+  if(f.note){
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(80,80,80);
+    doc.text('Note: '+f.note, M, y); y+=10;
+  }
+  // Separatore
+  doc.setDrawColor(200,200,200); doc.setLineWidth(0.3); doc.line(M,y,W-M,y); y+=10;
+  // Testo legale
+  doc.setFont('helvetica','italic'); doc.setFontSize(9); doc.setTextColor(60,60,60);
+  const legalLines = doc.splitTextToSize('Fornitura abbigliamento security in concordato col regolamento aziendale da Lei sottoscritto.', W-M*2);
+  doc.text(legalLines, M, y); y += legalLines.length*5+10;
+  // Firma
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(80,80,80);
+  doc.text('Firma operatore: ___________________________', M, y);
+  doc.text('Data: _______________', W-M-50, y);
+  y+=14;
+  doc.text('Firma responsabile: ___________________________', M, y);
+  // Footer
+  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(160,160,160);
+  doc.text('Alfa Security Group — Fornitura Vestiario Security — '+dataStr, W/2, 290, {align:'center'});
+  doc.save('fornitura_'+((f.cognome_operatore||'op').toLowerCase())+'_'+dataStr.replace(/\//g,'-')+'.pdf');
+}
+
+async function _vesaPFInvia(id) {
+  if(!confirm('Inviare la fornitura al lato utente dell\'operatore?')) return;
+  try {
+    await apiFetch('/admin/prime-forniture/'+id+'/invia',{method:'POST',body:JSON.stringify({})});
+    const f = window._VESAPF.data.find(x=>x.id===id);
+    if(f){ f.messaggio_inviato=true; f.messaggio_inviato_at=new Date().toISOString(); }
+    showToast('✓ Messaggio inviato all\'operatore');
+    _vesaRender(document.getElementById('content'));
+  } catch(e){ showToast('Errore invio','error'); }
+}
 function _vesaSetSearch(v){window._VESA.search=v;_vesaRender(document.getElementById('content'));const inp=document.getElementById('vesa_search');if(inp){inp.focus();inp.setSelectionRange(inp.value.length,inp.value.length);}}
 function _vesaSetStato(v){window._VESA.stato=v;_vesaRender(document.getElementById('content'));}
 function _vesaFiltroRapido(v){window._VESA.stato=window._VESA.stato===v?'tutti':v;_vesaRender(document.getElementById('content'));}

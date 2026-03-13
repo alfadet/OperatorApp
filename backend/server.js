@@ -123,7 +123,7 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 // ── USERS ─────────────────────────────────────────────────────────────────────
-const USER_COLS = 'id,email,is_admin,nome,cognome,telefono,indirizzo,data_nascita,codice_fiscale,nr_matricola,matricola_rilasciata,matricola_scadenza,iban,blocked,disclaimer_accepted,disclaimer_accepted_at,created_at';
+const USER_COLS = 'id,email,is_admin,nome,cognome,telefono,indirizzo,data_nascita,codice_fiscale,nr_matricola,matricola_rilasciata,matricola_scadenza,iban,blocked,disclaimer_accepted,disclaimer_accepted_at,created_at,rinnovo_matricola,istanza_data,istanza_supporto_data';
 
 app.get('/api/users', auth, adminOnly, async (req, res) => {
   try {
@@ -146,15 +146,26 @@ app.put('/api/users/:id', auth, async (req, res) => {
   try {
     if (!req.user.is_admin && req.user.id !== req.params.id)
       return res.status(403).json({ error: 'Accesso negato' });
-    const { nome, cognome, email, telefono, indirizzo, data_nascita, codice_fiscale, iban, nr_matricola, matricola_rilasciata, matricola_scadenza, password } = req.body;
+    const { nome, cognome, email, telefono, indirizzo, data_nascita, codice_fiscale, iban, nr_matricola, matricola_rilasciata, matricola_scadenza, password, rinnovo_matricola, istanza_data, istanza_supporto_data } = req.body;
     let q, params;
-    if (password) {
-      const hash = await bcrypt.hash(password, 10);
-      q = `UPDATE users SET nome=$1,cognome=$2,email=$3,telefono=$4,indirizzo=$5,data_nascita=$6,codice_fiscale=$7,iban=$8,nr_matricola=$9,matricola_rilasciata=$10,matricola_scadenza=$11,password_hash=$12 WHERE id=$13 RETURNING ${USER_COLS}`;
-      params = [nome, cognome, email, telefono, indirizzo, data_nascita||null, codice_fiscale, iban||null, nr_matricola||null, matricola_rilasciata||null, matricola_scadenza||null, hash, req.params.id];
+    if (req.user.is_admin) {
+      if (password) {
+        const hash = await bcrypt.hash(password, 10);
+        q = `UPDATE users SET nome=$1,cognome=$2,email=$3,telefono=$4,indirizzo=$5,data_nascita=$6,codice_fiscale=$7,iban=$8,nr_matricola=$9,matricola_rilasciata=$10,matricola_scadenza=$11,password_hash=$12,rinnovo_matricola=$13,istanza_data=$14,istanza_supporto_data=$15 WHERE id=$16 RETURNING ${USER_COLS}`;
+        params = [nome, cognome, email, telefono, indirizzo, data_nascita||null, codice_fiscale, iban||null, nr_matricola||null, matricola_rilasciata||null, matricola_scadenza||null, hash, rinnovo_matricola||null, istanza_data||null, istanza_supporto_data||null, req.params.id];
+      } else {
+        q = `UPDATE users SET nome=$1,cognome=$2,email=$3,telefono=$4,indirizzo=$5,data_nascita=$6,codice_fiscale=$7,iban=$8,nr_matricola=$9,matricola_rilasciata=$10,matricola_scadenza=$11,rinnovo_matricola=$12,istanza_data=$13,istanza_supporto_data=$14 WHERE id=$15 RETURNING ${USER_COLS}`;
+        params = [nome, cognome, email, telefono, indirizzo, data_nascita||null, codice_fiscale, iban||null, nr_matricola||null, matricola_rilasciata||null, matricola_scadenza||null, rinnovo_matricola||null, istanza_data||null, istanza_supporto_data||null, req.params.id];
+      }
     } else {
-      q = `UPDATE users SET nome=$1,cognome=$2,email=$3,telefono=$4,indirizzo=$5,data_nascita=$6,codice_fiscale=$7,iban=$8,nr_matricola=$9,matricola_rilasciata=$10,matricola_scadenza=$11 WHERE id=$12 RETURNING ${USER_COLS}`;
-      params = [nome, cognome, email, telefono, indirizzo, data_nascita||null, codice_fiscale, iban||null, nr_matricola||null, matricola_rilasciata||null, matricola_scadenza||null, req.params.id];
+      if (password) {
+        const hash = await bcrypt.hash(password, 10);
+        q = `UPDATE users SET nome=$1,cognome=$2,email=$3,telefono=$4,indirizzo=$5,data_nascita=$6,codice_fiscale=$7,iban=$8,nr_matricola=$9,matricola_rilasciata=$10,matricola_scadenza=$11,password_hash=$12 WHERE id=$13 RETURNING ${USER_COLS}`;
+        params = [nome, cognome, email, telefono, indirizzo, data_nascita||null, codice_fiscale, iban||null, nr_matricola||null, matricola_rilasciata||null, matricola_scadenza||null, hash, req.params.id];
+      } else {
+        q = `UPDATE users SET nome=$1,cognome=$2,email=$3,telefono=$4,indirizzo=$5,data_nascita=$6,codice_fiscale=$7,iban=$8,nr_matricola=$9,matricola_rilasciata=$10,matricola_scadenza=$11 WHERE id=$12 RETURNING ${USER_COLS}`;
+        params = [nome, cognome, email, telefono, indirizzo, data_nascita||null, codice_fiscale, iban||null, nr_matricola||null, matricola_rilasciata||null, matricola_scadenza||null, req.params.id];
+      }
     }
     const r = await pool.query(q, params);
     res.json(r.rows[0]);

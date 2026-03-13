@@ -1938,6 +1938,14 @@ async function adminEditUser(id) {
         <div class="field-group"><div class="field-label">Data Scadenza</div><input class="field-input" type="date" id="edit-mat-scadenza" value="${u.matricola_scadenza ? u.matricola_scadenza.substring(0,10) : ''}"></div>
       </div>
     </div>
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+      <div style="font-size:11px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:10px">📋 Pratiche Matricola</div>
+      <div class="form-grid">
+        <div class="field-group"><div class="field-label">Rinnovo / Nuova Matricola</div><input class="field-input" id="edit-rinnovo-matricola" value="${u.rinnovo_matricola||''}" placeholder="Es. Rinnovo / Nuova"></div>
+        <div class="field-group"><div class="field-label">Presentata Istanza in Data</div><input class="field-input" type="date" id="edit-istanza-data" value="${u.istanza_data ? u.istanza_data.substring(0,10) : ''}"></div>
+        <div class="field-group full"><div class="field-label">Istanza Supporto Presentata in Data</div><input class="field-input" type="date" id="edit-istanza-supporto-data" value="${u.istanza_supporto_data ? u.istanza_supporto_data.substring(0,10) : ''}"></div>
+      </div>
+    </div>
     <div class="btn-row" style="margin-top:20px">
       <button class="btn-sm btn-primary" onclick="adminSaveUser('${id}')">💾 Salva</button>
       <button class="btn-sm btn-secondary" onclick="closeModalDirect()">Annulla</button>
@@ -1958,8 +1966,11 @@ async function adminSaveUser(id) {
   const nr_matricola = document.getElementById('edit-matricola').value;
   const matricola_rilasciata = document.getElementById('edit-mat-rilasciata').value;
   const matricola_scadenza = document.getElementById('edit-mat-scadenza').value;
+  const rinnovo_matricola = document.getElementById('edit-rinnovo-matricola').value;
+  const istanza_data = document.getElementById('edit-istanza-data').value;
+  const istanza_supporto_data = document.getElementById('edit-istanza-supporto-data').value;
   try {
-    await apiFetch(`/users/${id}`, { method:'PUT', body: JSON.stringify({nome, cognome, email, telefono, indirizzo, data_nascita, codice_fiscale, iban, nr_matricola, matricola_rilasciata, matricola_scadenza}) });
+    await apiFetch(`/users/${id}`, { method:'PUT', body: JSON.stringify({nome, cognome, email, telefono, indirizzo, data_nascita, codice_fiscale, iban, nr_matricola, matricola_rilasciata, matricola_scadenza, rinnovo_matricola, istanza_data, istanza_supporto_data}) });
     closeModalDirect();
     showToast('Dati operatore aggiornati ✓');
     renderAdminUsers(document.getElementById('content'),'');
@@ -2902,6 +2913,22 @@ function renderUserProfile(content) {
         <div class="field-group">
           <div class="field-label">Data Scadenza</div>
           <input class="field-input" type="date" id="p-mat-scadenza" value="${u.matricola_scadenza ? u.matricola_scadenza.substring(0,10) : ''}" oninput="scheduleProfileAutosave()">
+        </div>
+        <div class="field-group full" style="margin-top:4px;padding-top:14px;border-top:1px solid var(--border)">
+          <div style="font-size:11px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:2px">📋 Pratiche Matricola</div>
+          <div style="font-size:11px;color:var(--text-muted)">Campi gestiti dall'amministratore</div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">Rinnovo / Nuova Matricola</div>
+          <input class="field-input" value="${u.rinnovo_matricola||'—'}" readonly style="opacity:0.65;cursor:default;background:var(--bg2)">
+        </div>
+        <div class="field-group">
+          <div class="field-label">Presentata Istanza in Data</div>
+          <input class="field-input" value="${u.istanza_data ? new Date(u.istanza_data).toLocaleDateString('it-IT') : '—'}" readonly style="opacity:0.65;cursor:default;background:var(--bg2)">
+        </div>
+        <div class="field-group full">
+          <div class="field-label">Istanza Supporto Presentata in Data</div>
+          <input class="field-input" value="${u.istanza_supporto_data ? new Date(u.istanza_supporto_data).toLocaleDateString('it-IT') : '—'}" readonly style="opacity:0.65;cursor:default;background:var(--bg2)">
         </div>
       </div>
       <div class="btn-row" style="margin-top:20px">

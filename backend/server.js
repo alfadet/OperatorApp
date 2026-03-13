@@ -71,6 +71,22 @@ pool.query(`DO $$ BEGIN
   THEN ALTER TABLE security_vestiario ADD COLUMN radio_stato TEXT; END IF;
 END $$;`).catch(e => console.error('radio_stato migration error:', e.message));
 
+// ── ADD AMMINISTRAZIONE DETTAGLIO COLUMNS IF MISSING ──────────────────────────
+pool.query(`DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='amministrazione_mensile' AND column_name='societa_varie_dettaglio')
+  THEN ALTER TABLE amministrazione_mensile ADD COLUMN societa_varie_dettaglio TEXT DEFAULT '[]'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='amministrazione_mensile' AND column_name='costi_vari_dettaglio')
+  THEN ALTER TABLE amministrazione_mensile ADD COLUMN costi_vari_dettaglio TEXT DEFAULT '[]'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='is_supervisore')
+  THEN ALTER TABLE users ADD COLUMN is_supervisore BOOLEAN DEFAULT FALSE; END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='rinnovo_matricola')
+  THEN ALTER TABLE users ADD COLUMN rinnovo_matricola TEXT; END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='istanza_data')
+  THEN ALTER TABLE users ADD COLUMN istanza_data DATE; END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='istanza_supporto_data')
+  THEN ALTER TABLE users ADD COLUMN istanza_supporto_data DATE; END IF;
+END $$;`).catch(e => console.error('Migrations error:', e.message));
+
 // ── Auth middleware ──────────────────────────────────────────────────────────
 function auth(req, res, next) {
   const h = req.headers.authorization;
@@ -773,6 +789,13 @@ app.post('/api/admin/amministrazione', auth, adminOnly, async (req, res) => {
        costo_societa_varie||0,costi_vari||0,societa_varie_dettaglio||'[]',costi_vari_dettaglio||'[]']
     );
     res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/admin/amministrazione/:mese/:anno', auth, adminOnly, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM amministrazione_mensile WHERE mese=$1 AND anno=$2', [req.params.mese, req.params.anno]);
+    res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

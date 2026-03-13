@@ -138,6 +138,8 @@ CREATE TABLE IF NOT EXISTS amministrazione_mensile (
   costo_vestiario DECIMAL(12,2) DEFAULT 0,
   costo_societa_varie DECIMAL(12,2) DEFAULT 0,
   costi_vari DECIMAL(12,2) DEFAULT 0,
+  societa_varie_dettaglio TEXT DEFAULT '[]',
+  costi_vari_dettaglio TEXT DEFAULT '[]',
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW(),
   UNIQUE(mese, anno)

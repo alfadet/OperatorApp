@@ -154,7 +154,7 @@ app.get('/api/users', auth, supervisorOrAdmin, async (req, res) => {
 
 app.get('/api/users/:id', auth, async (req, res) => {
   try {
-    if (!req.user.is_admin && req.user.id !== req.params.id)
+    if (!req.user.is_admin && !req.user.is_supervisore && req.user.id !== req.params.id)
       return res.status(403).json({ error: 'Accesso negato' });
     const r = await pool.query(`SELECT ${USER_COLS} FROM users WHERE id=$1`, [req.params.id]);
     if (!r.rows.length) return res.status(404).json({ error: 'Utente non trovato' });
@@ -235,7 +235,7 @@ app.get('/api/expenses', auth, supervisorOrAdmin, async (req, res) => {
 
 app.get('/api/expenses/:userId', auth, async (req, res) => {
   try {
-    if (!req.user.is_admin && req.user.id !== req.params.userId)
+    if (!req.user.is_admin && !req.user.is_supervisore && req.user.id !== req.params.userId)
       return res.status(403).json({ error: 'Accesso negato' });
     const r = await pool.query('SELECT * FROM expenses WHERE user_id=$1 ORDER BY data DESC', [req.params.userId]);
     res.json(r.rows);
@@ -350,7 +350,7 @@ app.patch('/api/messages/:id/read', auth, async (req, res) => {
 });
 
 // ── INCOMING MESSAGES (Operatori → Admin) ────────────────────────────────────
-app.get('/api/incoming-messages', auth, adminOnly, async (req, res) => {
+app.get('/api/incoming-messages', auth, supervisorOrAdmin, async (req, res) => {
   try {
     const r = await pool.query('SELECT * FROM incoming_messages ORDER BY created_at DESC');
     res.json(r.rows);
@@ -398,7 +398,7 @@ app.delete('/api/incoming-messages/:id', auth, adminOnly, async (req, res) => {
 // ── DOCUMENTS ─────────────────────────────────────────────────────────────────
 app.get('/api/documents/:userId', auth, async (req, res) => {
   try {
-    if (!req.user.is_admin && req.user.id !== req.params.userId)
+    if (!req.user.is_admin && !req.user.is_supervisore && req.user.id !== req.params.userId)
       return res.status(403).json({ error: 'Accesso negato' });
     const r = await pool.query('SELECT * FROM documents WHERE user_id=$1', [req.params.userId]);
     // Convert rows to object keyed by doc_key
@@ -558,7 +558,7 @@ app.get('/api/urgent-messages', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/urgent-messages', auth, adminOnly, async (req, res) => {
+app.post('/api/urgent-messages', auth, supervisorOrAdmin, async (req, res) => {
   try {
     const { testo, expires_at } = req.body;
     const id = uuidv4();

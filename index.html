@@ -2565,6 +2565,15 @@ async function sendSingle() {
   } catch(e) { showToast('Errore invio', 'error'); }
 }
 
+function renderUserStatusOperatori(content) {
+  content.innerHTML = `
+    <div class="card" style="text-align:center;padding:48px 24px">
+      <div style="font-size:48px;margin-bottom:16px">🚧</div>
+      <div style="font-family:'Cinzel',serif;font-size:18px;color:var(--gold);letter-spacing:2px;margin-bottom:10px">Status Operatori</div>
+      <div style="font-size:14px;color:var(--text-muted)">Sezione in costruzione</div>
+    </div>`;
+}
+
 // ===== SUPERVISOR PAGES =====
 
 async function renderSvUsers(content) {
@@ -2776,6 +2785,7 @@ async function buildUserUI() {
     </div>
     <div class="nav-item" onclick="showUserPage('notes',this)"><span class="nav-icon">📝</span> Note</div>
     <div class="nav-item" onclick="showUserPage('vestiario',this)"><span class="nav-icon">👔</span> Abbigliamento Security</div>
+    <div class="nav-item" onclick="showUserPage('status-operatori',this)"><span class="nav-icon">🎖</span> Status Operatori</div>
     ${u.is_supervisore ? `
     <div style="margin:14px 0 6px;padding:0 12px;font-size:10px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;display:flex;align-items:center;gap:6px">
       <img src="/superv.png" style="height:18px;width:auto"> Area Supervisore
@@ -2813,6 +2823,7 @@ function showUserPage(page, el) {
   else if(page==='rules') renderUserRules(content);
   else if(page==='notes') renderUserNotes(content);
   else if(page==='vestiario') renderUserVestiario(content);
+  else if(page==='status-operatori') renderUserStatusOperatori(content);
   else if(page==='sv-users') renderSvUsers(content);
   else if(page==='sv-expenses') renderSvExpenses(content);
   else if(page==='sv-vestiario') renderSvVestiario(content);

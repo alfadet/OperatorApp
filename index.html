@@ -1723,6 +1723,9 @@ function buildAdminUI() {
     <div class="nav-item" onclick="showAdminPage('vestiario',this)" id="nav-vestiario">
       <span class="nav-icon">👔</span> Security Vestiario
     </div>
+    <div class="nav-item" onclick="showAdminPage('supervisori',this)" id="nav-supervisori">
+      <span class="nav-icon">🎖</span> Supervisori
+    </div>
     <div class="nav-divider"></div>
     <div class="nav-qlinks-label">Accesso Rapido</div>
     <a class="nav-qlink ql-quest" href="https://form.jotform.com/212652413395050" target="_blank" rel="noopener">
@@ -1765,6 +1768,7 @@ function showAdminPage(page, el) {
   else if(page==='amministrazione') renderAdminAmministrazione(content);
   else if(page==='cassaanticpi') renderAdminCassaAnticpi(content);
   else if(page==='vestiario') renderAdminVestiario(content);
+  else if(page==='supervisori') renderAdminSupervisori(content);
   else renderAdminComms(content);
 }
 
@@ -2561,6 +2565,173 @@ async function sendSingle() {
   } catch(e) { showToast('Errore invio', 'error'); }
 }
 
+// ===== SUPERVISOR PAGES =====
+
+async function renderSvUsers(content) {
+  try {
+    const users = await apiFetch('/users');
+    content.innerHTML = `
+      <div class="card">
+        <div class="card-title" style="display:flex;align-items:center;gap:10px">
+          <img src="/superv.png" style="height:28px;width:auto"> 👥 Operatori — Sola Lettura
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Visualizzazione in sola lettura. Per modifiche contatta l'amministratore.</div>
+        ${users.map(u => `
+        <div style="padding:12px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;margin-bottom:8px">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+            <div>
+              <div style="font-weight:700;font-size:14px;color:var(--text)">${u.nome||'—'} ${u.cognome||''}</div>
+              <div style="font-size:12px;color:var(--text-muted)">${u.email}</div>
+            </div>
+            <div style="text-align:right;font-size:12px;color:var(--text-muted)">
+              ${u.telefono ? `📞 ${u.telefono}` : ''}
+              ${u.nr_matricola ? `<br>🪪 ${u.nr_matricola}` : ''}
+              ${u.is_supervisore ? `<br><span style="color:var(--gold);font-weight:700">🎖 Supervisore</span>` : ''}
+              ${u.blocked ? `<br><span style="color:#e74c3c">🚫 Sospeso</span>` : ''}
+            </div>
+          </div>
+        </div>`).join('')}
+      </div>`;
+  } catch(e) { content.innerHTML = '<div class="error-banner">Errore caricamento operatori</div>'; }
+}
+
+async function renderSvExpenses(content) {
+  try {
+    const expenses = await apiFetch('/expenses');
+    const fmt = v => '€ ' + Number(v||0).toFixed(2).replace('.',',');
+    const fmtD = d => d ? new Date(d).toLocaleDateString('it-IT') : '—';
+    content.innerHTML = `
+      <div class="card">
+        <div class="card-title" style="display:flex;align-items:center;gap:10px">
+          <img src="/superv.png" style="height:28px;width:auto"> 🚗 Spese Auto Operatori — Sola Lettura
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Visualizzazione in sola lettura. Solo l'amministratore può modificare o approvare.</div>
+        ${expenses.length === 0 ? '<p style="color:var(--text-muted)">Nessuna spesa registrata</p>' :
+        expenses.map(e => `
+        <div style="padding:12px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:var(--text)">${e.nome||''} ${e.cognome||''}</div>
+              <div style="font-size:12px;color:var(--text-muted)">${fmtD(e.data)} — ${e.descrizione||'—'}</div>
+              <div style="font-size:11px;color:var(--text-muted)">km: ${e.km||0} | Solo: ${e.solo ? 'Sì' : 'No'}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:15px;font-weight:700;color:var(--gold)">${fmt(e.importo)}</div>
+              <div style="font-size:11px;margin-top:3px">${e.pagato ? '<span style="color:#2ecc71">✅ Pagato</span>' : '<span style="color:var(--text-muted)">⏳ In attesa</span>'}</div>
+            </div>
+          </div>
+        </div>`).join('')}
+      </div>`;
+  } catch(e) { content.innerHTML = '<div class="error-banner">Errore caricamento spese</div>'; }
+}
+
+async function renderSvVestiario(content) {
+  try {
+    const rows = await apiFetch('/admin/vestiario');
+    const statoLabel = s => ({pendente:'⏳ Pendente',approvata:'✅ Approvata',non_approvata:'❌ Non Approvata'}[s]||s||'—');
+    content.innerHTML = `
+      <div class="card">
+        <div class="card-title" style="display:flex;align-items:center;gap:10px">
+          <img src="/superv.png" style="height:28px;width:auto"> 👔 Vestiario Security
+        </div>
+        <div style="font-size:12px;color:var(--gold);background:rgba(201,162,39,0.1);border:1px solid rgba(201,162,39,0.3);border-radius:8px;padding:8px 12px;margin-bottom:14px">
+          ⚠️ Ogni modifica verrà notificata automaticamente all'amministratore.
+        </div>
+        ${rows.length === 0 ? '<p style="color:var(--text-muted)">Nessuna scheda vestiario</p>' :
+        rows.map(r => `
+        <div style="padding:14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+            <div>
+              <div style="font-weight:700;font-size:14px;color:var(--text)">${r.nome_operatore||''} ${r.cognome_operatore||''}</div>
+              <div style="font-size:12px;color:var(--text-muted)">${statoLabel(r.stato_richiesta)}</div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn-sm btn-primary" onclick="svApprovaVestiario('${r.id}')">✅ Approva</button>
+              <button class="btn-sm btn-danger" onclick="svRifiutaVestiario('${r.id}')">❌ Rifiuta</button>
+            </div>
+          </div>
+          ${r.motivazione_admin ? `<div style="font-size:12px;color:var(--text-muted);border-top:1px solid var(--border);padding-top:8px;margin-top:4px">Note: ${r.motivazione_admin}</div>` : ''}
+        </div>`).join('')}
+      </div>`;
+  } catch(e) { content.innerHTML = '<div class="error-banner">Errore caricamento vestiario</div>'; }
+}
+
+async function svApprovaVestiario(id) {
+  try {
+    await apiFetch(`/admin/vestiario/${id}/stato`, { method:'PATCH', body: JSON.stringify({ stato_richiesta:'approvata', motivazione_admin:'' }) });
+    showToast('✅ Approvato — Admin notificato');
+    renderSvVestiario(document.getElementById('content'));
+  } catch(e) { showToast('Errore', 'error'); }
+}
+
+async function svRifiutaVestiario(id) {
+  const nota = prompt('Motivo del rifiuto (opzionale):') || '';
+  try {
+    await apiFetch(`/admin/vestiario/${id}/stato`, { method:'PATCH', body: JSON.stringify({ stato_richiesta:'non_approvata', motivazione_admin: nota }) });
+    showToast('❌ Rifiutato — Admin notificato');
+    renderSvVestiario(document.getElementById('content'));
+  } catch(e) { showToast('Errore', 'error'); }
+}
+
+async function renderSvComms(content) {
+  // Riusa la stessa logica della sezione comunicazioni admin
+  renderAdminComms(content);
+}
+
+// ===== ADMIN SUPERVISORI =====
+async function renderAdminSupervisori(content) {
+  try {
+    const users = await apiFetch('/users');
+    const supervisori = users.filter(u => u.is_supervisore);
+    const operatori = users.filter(u => !u.is_supervisore);
+    content.innerHTML = `
+      <div class="card">
+        <div class="card-title" style="display:flex;align-items:center;gap:12px">
+          <img src="/superv.png" style="height:38px;width:auto"> 🎖 Gestione Supervisori
+        </div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:18px">Assegna o revoca il ruolo di Supervisore agli operatori. Il supervisore ha accesso in sola lettura a Utenti e Spese Auto, può modificare il Vestiario (con notifica all'admin) e inviare Comunicazioni.</p>
+
+        ${supervisori.length > 0 ? `
+        <div style="margin-bottom:20px">
+          <div style="font-size:11px;letter-spacing:2px;color:#2ecc71;text-transform:uppercase;margin-bottom:10px">✅ Supervisori Attivi (${supervisori.length})</div>
+          ${supervisori.map(u => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:rgba(46,204,113,0.07);border:1px solid rgba(46,204,113,0.25);border-radius:10px;margin-bottom:8px;gap:12px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <img src="/superv.png" style="height:28px;width:auto;opacity:0.9">
+              <div>
+                <div style="font-weight:700;color:var(--text);font-size:14px">${u.nome||''} ${u.cognome||''}</div>
+                <div style="font-size:11px;color:var(--text-muted)">${u.email}</div>
+              </div>
+            </div>
+            <button class="btn-sm btn-danger" onclick="adminToggleSupervisore('${u.id}',false)">✕ Revoca</button>
+          </div>`).join('')}
+        </div>` : ''}
+
+        <div>
+          <div style="font-size:11px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;margin-bottom:10px">👥 Operatori (${operatori.length})</div>
+          ${operatori.length === 0 ? '<p style="color:var(--text-muted);font-size:13px">Nessun operatore disponibile</p>' :
+          operatori.map(u => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;gap:12px">
+            <div>
+              <div style="font-weight:600;color:var(--text);font-size:14px">${u.nome||''} ${u.cognome||''}</div>
+              <div style="font-size:11px;color:var(--text-muted)">${u.email}</div>
+            </div>
+            <button class="btn-sm btn-primary" onclick="adminToggleSupervisore('${u.id}',true)">🎖 Nomina Supervisore</button>
+          </div>`).join('')}
+        </div>
+      </div>
+    `;
+  } catch(e) { content.innerHTML = '<div class="error-banner">Errore caricamento</div>'; }
+}
+
+async function adminToggleSupervisore(id, valore) {
+  try {
+    await apiFetch(`/users/${id}/supervisore`, { method:'PATCH', body: JSON.stringify({ is_supervisore: valore }) });
+    showToast(valore ? '🎖 Supervisore assegnato' : 'Ruolo supervisore revocato');
+    renderAdminSupervisori(document.getElementById('content'));
+  } catch(e) { showToast('Errore', 'error'); }
+}
+
 // ===== USER UI =====
 async function buildUserUI() {
   const u = currentUser;
@@ -2597,6 +2768,15 @@ async function buildUserUI() {
     </div>
     <div class="nav-item" onclick="showUserPage('notes',this)"><span class="nav-icon">📝</span> Note</div>
     <div class="nav-item" onclick="showUserPage('vestiario',this)"><span class="nav-icon">👔</span> Abbigliamento Security</div>
+    ${u.is_supervisore ? `
+    <div style="margin:14px 0 6px;padding:0 12px;font-size:10px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;display:flex;align-items:center;gap:6px">
+      <img src="/superv.png" style="height:18px;width:auto"> Area Supervisore
+    </div>
+    <div class="nav-item" onclick="showUserPage('sv-users',this)"><span class="nav-icon">👥</span> Operatori</div>
+    <div class="nav-item" onclick="showUserPage('sv-expenses',this)"><span class="nav-icon">🚗</span> Spese Auto Operatori</div>
+    <div class="nav-item" onclick="showUserPage('sv-vestiario',this)"><span class="nav-icon">👔</span> Vestiario Security</div>
+    <div class="nav-item" onclick="showUserPage('sv-comms',this)"><span class="nav-icon">📢</span> Comunicazioni</div>
+    ` : ''}
   `;
   showUserPage('dashboard', sidebar.querySelector('.nav-item'));
 }
@@ -2625,6 +2805,10 @@ function showUserPage(page, el) {
   else if(page==='rules') renderUserRules(content);
   else if(page==='notes') renderUserNotes(content);
   else if(page==='vestiario') renderUserVestiario(content);
+  else if(page==='sv-users') renderSvUsers(content);
+  else if(page==='sv-expenses') renderSvExpenses(content);
+  else if(page==='sv-vestiario') renderSvVestiario(content);
+  else if(page==='sv-comms') renderSvComms(content);
 }
 
 async function userDismissCA(id) {
@@ -2666,6 +2850,16 @@ async function renderUserDashboard(content) {
   const fmtCA = ds => ds ? new Date(ds.split('T')[0]+'T00:00:00').toLocaleDateString('it-IT') : '';
   const fmtAmt = v => '€ '+Number(v).toFixed(2).replace('.',',');
   content.innerHTML = `
+    <!-- SUPERVISOR BADGE -->
+    ${u.is_supervisore ? `
+    <div style="background:linear-gradient(135deg,rgba(201,162,39,0.18),rgba(201,162,39,0.06));border:1px solid rgba(201,162,39,0.5);border-radius:12px;padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;gap:14px">
+      <img src="/superv.png" style="height:52px;width:auto;flex-shrink:0">
+      <div>
+        <div style="font-family:'Cinzel',serif;font-size:15px;color:var(--gold);font-weight:700;letter-spacing:2px">SUPERVISOR ALFA</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:3px">${u.nome||''} ${u.cognome||''} — Accesso privilegiato attivo</div>
+      </div>
+    </div>` : ''}
+
     <!-- URGENT MESSAGES — always on top, full width -->
     ${activeUrgent.length > 0 ? `
     <div class="urgent-feed">

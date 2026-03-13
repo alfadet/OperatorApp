@@ -86,6 +86,10 @@ function adminOnly(req, res, next) {
   if (!req.user?.is_admin) return res.status(403).json({ error: 'Solo admin' });
   next();
 }
+function supervisorOrAdmin(req, res, next) {
+  if (!req.user?.is_admin && !req.user?.is_supervisore) return res.status(403).json({ error: 'Accesso negato' });
+  next();
+}
 
 // ── AUTH ─────────────────────────────────────────────────────────────────────
 app.post('/api/auth/login', async (req, res) => {
@@ -98,10 +102,10 @@ app.post('/api/auth/login', async (req, res) => {
     if (!ok) return res.status(401).json({ error: 'Email o password non corretti' });
     if (user.blocked && !user.is_admin) return res.status(403).json({ error: 'Account sospeso. Contatta l\'amministratore.' });
     const token = jwt.sign(
-      { id: user.id, email: user.email, is_admin: user.is_admin, nome: user.nome, cognome: user.cognome },
+      { id: user.id, email: user.email, is_admin: user.is_admin, is_supervisore: !!user.is_supervisore, nome: user.nome, cognome: user.cognome },
       JWT_SECRET, { expiresIn: '24h' }
     );
-    res.json({ token, user: { id: user.id, email: user.email, is_admin: user.is_admin, nome: user.nome, cognome: user.cognome, has_push: !!user.onesignal_player_id } });
+    res.json({ token, user: { id: user.id, email: user.email, is_admin: user.is_admin, is_supervisore: !!user.is_supervisore, nome: user.nome, cognome: user.cognome, has_push: !!user.onesignal_player_id } });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -123,9 +127,9 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 // ── USERS ─────────────────────────────────────────────────────────────────────
-const USER_COLS = 'id,email,is_admin,nome,cognome,telefono,indirizzo,data_nascita,codice_fiscale,nr_matricola,matricola_rilasciata,matricola_scadenza,iban,blocked,disclaimer_accepted,disclaimer_accepted_at,created_at,rinnovo_matricola,istanza_data,istanza_supporto_data';
+const USER_COLS = 'id,email,is_admin,is_supervisore,nome,cognome,telefono,indirizzo,data_nascita,codice_fiscale,nr_matricola,matricola_rilasciata,matricola_scadenza,iban,blocked,disclaimer_accepted,disclaimer_accepted_at,created_at,rinnovo_matricola,istanza_data,istanza_supporto_data';
 
-app.get('/api/users', auth, adminOnly, async (req, res) => {
+app.get('/api/users', auth, supervisorOrAdmin, async (req, res) => {
   try {
     const r = await pool.query(`SELECT ${USER_COLS} FROM users WHERE is_admin=FALSE ORDER BY created_at`);
     res.json(r.rows);
@@ -192,8 +196,17 @@ app.delete('/api/users/:id', auth, adminOnly, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.patch('/api/users/:id/supervisore', auth, adminOnly, async (req, res) => {
+  try {
+    const { is_supervisore } = req.body;
+    const r = await pool.query(`UPDATE users SET is_supervisore=$1 WHERE id=$2 RETURNING ${USER_COLS}`, [!!is_supervisore, req.params.id]);
+    if (!r.rows.length) return res.status(404).json({ error: 'Utente non trovato' });
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── EXPENSES ──────────────────────────────────────────────────────────────────
-app.get('/api/expenses', auth, adminOnly, async (req, res) => {
+app.get('/api/expenses', auth, supervisorOrAdmin, async (req, res) => {
   try {
     const r = await pool.query(
       `SELECT e.*, u.nome, u.cognome, u.email
@@ -255,7 +268,7 @@ app.delete('/api/expenses/:id', auth, async (req, res) => {
 app.get('/api/messages', auth, async (req, res) => {
   try {
     let r;
-    if (req.user.is_admin) {
+    if (req.user.is_admin || req.user.is_supervisore) {
       r = await pool.query('SELECT m.*, array_agg(mr.user_id) FILTER (WHERE mr.user_id IS NOT NULL) as read_by FROM messages m LEFT JOIN message_reads mr ON m.id=mr.message_id GROUP BY m.id ORDER BY m.created_at DESC');
     } else {
       r = await pool.query(
@@ -288,7 +301,7 @@ app.delete('/api/messages/:id', auth, adminOnly, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/messages', auth, adminOnly, async (req, res) => {
+app.post('/api/messages', auth, supervisorOrAdmin, async (req, res) => {
   try {
     const { testo, nome_file, mime_type, file_data, is_broadcast, target_user_id } = req.body;
     const id = uuidv4();
@@ -1012,14 +1025,14 @@ app.post('/api/vestiario', auth, async (req, res) => {
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
-app.get('/api/admin/vestiario', auth, adminOnly, async (req, res) => {
+app.get('/api/admin/vestiario', auth, supervisorOrAdmin, async (req, res) => {
   try {
     const r = await pool.query('SELECT * FROM security_vestiario ORDER BY cognome_operatore, nome_operatore');
     res.json(r.rows);
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
-app.patch('/api/admin/vestiario/:id/stato', auth, adminOnly, async (req, res) => {
+app.patch('/api/admin/vestiario/:id/stato', auth, supervisorOrAdmin, async (req, res) => {
   try {
     const { stato_richiesta, motivazione_admin } = req.body;
     const r = await pool.query(
@@ -1030,6 +1043,20 @@ app.patch('/api/admin/vestiario/:id/stato', auth, adminOnly, async (req, res) =>
       const ids = await getPushIds([row.operatore_id]);
       const label = stato_richiesta === 'approvata' ? '✅ Approvata' : '❌ Non approvata';
       await sendPush(ids, 'Security Vestiario', `Richiesta vestiario ${label}${motivazione_admin ? ': ' + motivazione_admin : ''}`);
+    }
+    // Se modifica fatta da supervisore, notifica admin via messaggio
+    if (!req.user.is_admin && req.user.is_supervisore && row) {
+      const svNome = req.user.nome ? `${req.user.nome} ${req.user.cognome||''}`.trim() : req.user.email;
+      const statoLabel = stato_richiesta === 'approvata' ? 'APPROVATA' : stato_richiesta === 'non_approvata' ? 'NON APPROVATA' : stato_richiesta;
+      const msgId = require('crypto').randomUUID();
+      const testo = `[SUPERVISORE ${svNome}] Ha modificato il vestiario di ${row.nome_operatore||''} ${row.cognome_operatore||''}: stato → ${statoLabel}${motivazione_admin ? ' | Note: '+motivazione_admin : ''}`;
+      const adminR = await pool.query(`SELECT id FROM users WHERE is_admin=TRUE LIMIT 1`);
+      if (adminR.rows.length) {
+        await pool.query(
+          'INSERT INTO incoming_messages (id,from_user_id,from_email,testo,created_at) VALUES ($1,$2,$3,$4,NOW())',
+          [msgId, req.user.id, req.user.email, testo]
+        );
+      }
     }
     res.json(row);
   } catch(e) { res.status(500).json({error:e.message}); }

@@ -1724,7 +1724,7 @@ function buildAdminUI() {
       <span class="nav-icon">👔</span> Security Vestiario
     </div>
     <div class="nav-item" onclick="showAdminPage('supervisori',this)" id="nav-supervisori">
-      <span class="nav-icon">🎖</span> Supervisori
+      <span class="nav-icon">🎖</span> Status Operatori
     </div>
     <div class="nav-divider"></div>
     <div class="nav-qlinks-label">Accesso Rapido</div>
@@ -1768,7 +1768,7 @@ function showAdminPage(page, el) {
   else if(page==='amministrazione') renderAdminAmministrazione(content);
   else if(page==='cassaanticpi') renderAdminCassaAnticpi(content);
   else if(page==='vestiario') renderAdminVestiario(content);
-  else if(page==='supervisori') renderAdminSupervisori(content);
+  else if(page==='supervisori') renderAdminSupervisori(content, '');
   else renderAdminComms(content);
 }
 
@@ -2679,48 +2679,56 @@ async function renderSvComms(content) {
 }
 
 // ===== ADMIN SUPERVISORI =====
-async function renderAdminSupervisori(content) {
+async function renderAdminSupervisori(content, searchQ) {
   try {
     const users = await apiFetch('/users');
     const supervisori = users.filter(u => u.is_supervisore);
-    const operatori = users.filter(u => !u.is_supervisore);
+    const q = (searchQ||'').toLowerCase().trim();
+    const risultati = q ? users.filter(u => !u.is_supervisore && (`${u.nome||''} ${u.cognome||''} ${u.email}`).toLowerCase().includes(q)) : [];
     content.innerHTML = `
       <div class="card">
         <div class="card-title" style="display:flex;align-items:center;gap:12px">
-          <img src="/superv.png" style="height:38px;width:auto"> 🎖 Gestione Supervisori
+          <img src="/superv.png" style="height:38px;width:auto"> 🎖 Status Operatori
         </div>
-        <p style="font-size:13px;color:var(--text-muted);margin-bottom:18px">Assegna o revoca il ruolo di Supervisore agli operatori. Il supervisore ha accesso in sola lettura a Utenti e Spese Auto, può modificare il Vestiario (con notifica all'admin) e inviare Comunicazioni.</p>
 
-        ${supervisori.length > 0 ? `
-        <div style="margin-bottom:20px">
-          <div style="font-size:11px;letter-spacing:2px;color:#2ecc71;text-transform:uppercase;margin-bottom:10px">✅ Supervisori Attivi (${supervisori.length})</div>
-          ${supervisori.map(u => `
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:rgba(46,204,113,0.07);border:1px solid rgba(46,204,113,0.25);border-radius:10px;margin-bottom:8px;gap:12px">
-            <div style="display:flex;align-items:center;gap:10px">
-              <img src="/superv.png" style="height:28px;width:auto;opacity:0.9">
-              <div>
-                <div style="font-weight:700;color:var(--text);font-size:14px">${u.nome||''} ${u.cognome||''}</div>
-                <div style="font-size:11px;color:var(--text-muted)">${u.email}</div>
-              </div>
+        <!-- Supervisori attivi -->
+        <div style="margin-bottom:24px">
+          <div style="font-size:11px;letter-spacing:2px;color:#2ecc71;text-transform:uppercase;margin-bottom:12px">Supervisori Attivi</div>
+          ${supervisori.length === 0 ? '<p style="color:var(--text-muted);font-size:13px">Nessun supervisore assegnato</p>' :
+          supervisori.map(u => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:rgba(46,204,113,0.07);border:1px solid rgba(46,204,113,0.3);border-radius:10px;margin-bottom:8px;gap:12px">
+            <div>
+              <div style="font-size:16px;font-weight:700;color:var(--text)">${u.nome||''} ${u.cognome||''}</div>
+              <div style="font-size:12px;color:#2ecc71;font-weight:600;margin-top:3px;letter-spacing:1px">🎖 SUPERVISORE</div>
             </div>
             <button class="btn-sm btn-danger" onclick="adminToggleSupervisore('${u.id}',false)">✕ Revoca</button>
           </div>`).join('')}
-        </div>` : ''}
+        </div>
 
-        <div>
-          <div style="font-size:11px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;margin-bottom:10px">👥 Operatori (${operatori.length})</div>
-          ${operatori.length === 0 ? '<p style="color:var(--text-muted);font-size:13px">Nessun operatore disponibile</p>' :
-          operatori.map(u => `
+        <!-- Cerca operatore -->
+        <div style="padding-top:16px;border-top:1px solid var(--border)">
+          <div style="font-size:11px;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;margin-bottom:10px">Assegna Supervisore</div>
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <input class="field-input" id="sv-search" placeholder="Cerca per nome, cognome o email…"
+              value="${searchQ||''}"
+              oninput="renderAdminSupervisori(document.getElementById('content'), this.value)"
+              style="flex:1">
+            ${q ? `<button class="btn-sm btn-secondary" onclick="renderAdminSupervisori(document.getElementById('content'),'')">✕</button>` : ''}
+          </div>
+          ${q && risultati.length === 0 ? '<p style="color:var(--text-muted);font-size:13px">Nessun operatore trovato</p>' : ''}
+          ${risultati.map(u => `
           <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;gap:12px">
             <div>
-              <div style="font-weight:600;color:var(--text);font-size:14px">${u.nome||''} ${u.cognome||''}</div>
+              <div style="font-weight:600;font-size:14px;color:var(--text)">${u.nome||''} ${u.cognome||''}</div>
               <div style="font-size:11px;color:var(--text-muted)">${u.email}</div>
             </div>
-            <button class="btn-sm btn-primary" onclick="adminToggleSupervisore('${u.id}',true)">🎖 Nomina Supervisore</button>
+            <button class="btn-sm btn-primary" onclick="adminToggleSupervisore('${u.id}',true)">🎖 Nomina</button>
           </div>`).join('')}
         </div>
       </div>
     `;
+    // mantieni focus sul campo cerca
+    if(q) { const el = document.getElementById('sv-search'); if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length);} }
   } catch(e) { content.innerHTML = '<div class="error-banner">Errore caricamento</div>'; }
 }
 

@@ -284,7 +284,7 @@ app.delete('/api/expenses/:id', auth, async (req, res) => {
 app.get('/api/messages', auth, async (req, res) => {
   try {
     let r;
-    if (req.user.is_admin || req.user.is_supervisore) {
+    if (req.user.is_admin) {
       r = await pool.query('SELECT m.*, array_agg(mr.user_id) FILTER (WHERE mr.user_id IS NOT NULL) as read_by FROM messages m LEFT JOIN message_reads mr ON m.id=mr.message_id GROUP BY m.id ORDER BY m.created_at DESC');
     } else {
       r = await pool.query(

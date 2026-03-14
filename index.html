@@ -2923,6 +2923,7 @@ async function getUserUnreadCount() {
 }
 
 function showUserPage(page, el) {
+  window._userCurrentPage = page;
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   if(el) el.classList.add('active');
   const content = document.getElementById('content');
@@ -3121,10 +3122,10 @@ async function renderUserDashboard(content) {
     </div>` : ''}
   `;
 
-  // Auto-refresh countdown every 60s
+  // Auto-refresh countdown every 60s — solo se utente è ancora sulla dashboard
   if(activeUrgent.length > 0) {
     setTimeout(() => {
-      if(currentUser && !currentUser.is_admin) {
+      if(currentUser && !currentUser.is_admin && window._userCurrentPage === 'dashboard') {
         const c = document.getElementById('content');
         if(c) renderUserDashboard(c);
       }

@@ -2682,28 +2682,105 @@ async function svRenderVestiario(tc) {
   try {
     const rows = await apiFetch('/admin/vestiario');
     const statoLabel = s => ({pendente:'⏳ Pendente',approvata:'✅ Approvata',non_approvata:'❌ Non Approvata'}[s]||s||'—');
+    const statoColor = s => ({pendente:'#f39c12',approvata:'#2ecc71',non_approvata:'#e74c3c'}[s]||'var(--text-muted)');
+    const possLabel = p => ({personale:'Personale',aziendale:'Aziendale',nessuna:'Nessuna'}[p]||p||'—');
+    const capiLabels = {giacca:'Giacca',maglietta:'Maglietta',pantaloni:'Pantaloni',felpa:'Felpa'};
+
+    const renderRiga = (r) => {
+      const capi = ['giacca','maglietta','pantaloni','felpa'].map(c => {
+        const taglia = r[`${c}_taglia`];
+        const possesso = r[`${c}_possesso`];
+        const radio = r[`${c}_radio`];
+        if (!taglia && !possesso) return '';
+        return `<div style="display:flex;gap:6px;align-items:center;font-size:12px">
+          <span style="color:var(--gold);font-weight:600;min-width:72px">${capiLabels[c]}:</span>
+          <span style="color:var(--text)">${taglia||'—'}</span>
+          <span style="color:var(--text-muted)">· ${possLabel(possesso)}</span>
+          ${radio && radio !== 'no' ? `<span style="background:rgba(201,162,39,0.15);color:var(--gold);font-size:11px;padding:1px 6px;border-radius:4px">📻 Radio</span>` : ''}
+        </div>`;
+      }).filter(Boolean).join('');
+
+      const hasPendente = r.stato_richiesta === 'pendente' && r.richiesta_capo;
+      return `
+      <div style="padding:14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px">
+          <div style="cursor:pointer" onclick="adminViewUser('${r.operatore_id}')"
+            title="Apri scheda operatore">
+            <div style="font-weight:700;font-size:15px;color:var(--gold);text-decoration:underline;text-underline-offset:3px">${r.nome_operatore||''} ${r.cognome_operatore||''}</div>
+            <div style="font-size:12px;color:${statoColor(r.stato_richiesta)};margin-top:2px;font-weight:600">${statoLabel(r.stato_richiesta)}</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button class="btn-sm btn-primary" onclick="svApprovaVestiario('${r.id}')">✅ Approva</button>
+            <button class="btn-sm btn-danger" onclick="svRifiutaVestiario('${r.id}')">❌ Rifiuta</button>
+          </div>
+        </div>
+        ${capi ? `<div style="display:flex;flex-direction:column;gap:5px;padding:10px;background:var(--bg2);border-radius:8px;margin-bottom:8px">${capi}</div>` : ''}
+        ${hasPendente ? `<div style="font-size:12px;background:rgba(243,156,18,0.1);border:1px solid rgba(243,156,18,0.3);border-radius:7px;padding:8px 10px;margin-bottom:6px">
+          <span style="color:#f39c12;font-weight:700">⚠️ Richiesta:</span>
+          <span style="color:var(--text)"> ${r.richiesta_capo||''} ${r.richiesta_motivo ? '— '+r.richiesta_motivo : ''}</span>
+          ${r.richiesta_altro ? `<div style="color:var(--text-muted);margin-top:3px">${r.richiesta_altro}</div>` : ''}
+        </div>` : ''}
+        ${r.motivazione_admin ? `<div style="font-size:12px;color:var(--text-muted);border-top:1px solid var(--border);padding-top:8px;margin-top:4px">Note admin: ${r.motivazione_admin}</div>` : ''}
+      </div>`;
+    };
+
     tc.innerHTML = `
       <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap">
+          <div style="font-size:13px;color:var(--text-muted)">${rows.length} schede vestiario — clicca sul nome per aprire la scheda operatore</div>
+          ${rows.length > 0 ? `<button class="btn-sm btn-secondary" onclick="svStampaVestiario()" style="flex-shrink:0">🖨️ Stampa Lista PDF</button>` : ''}
+        </div>
         <div style="font-size:12px;color:var(--gold);background:rgba(201,162,39,0.1);border:1px solid rgba(201,162,39,0.3);border-radius:8px;padding:8px 12px;margin-bottom:14px">
           ⚠️ Ogni modifica verrà notificata automaticamente all'amministratore.
         </div>
-        ${rows.length === 0 ? '<p style="color:var(--text-muted)">Nessuna scheda vestiario</p>' :
-        rows.map(r => `
-        <div style="padding:14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;margin-bottom:10px">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-            <div>
-              <div style="font-weight:700;font-size:14px;color:var(--text)">${r.nome_operatore||''} ${r.cognome_operatore||''}</div>
-              <div style="font-size:12px;color:var(--text-muted)">${statoLabel(r.stato_richiesta)}</div>
-            </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <button class="btn-sm btn-primary" onclick="svApprovaVestiario('${r.id}')">✅ Approva</button>
-              <button class="btn-sm btn-danger" onclick="svRifiutaVestiario('${r.id}')">❌ Rifiuta</button>
-            </div>
-          </div>
-          ${r.motivazione_admin ? `<div style="font-size:12px;color:var(--text-muted);border-top:1px solid var(--border);padding-top:8px;margin-top:4px">Note: ${r.motivazione_admin}</div>` : ''}
-        </div>`).join('')}
+        ${rows.length === 0
+          ? '<p style="color:var(--text-muted)">Nessuna scheda vestiario registrata</p>'
+          : rows.map(renderRiga).join('')}
       </div>`;
+
+    window._svVestRows = rows;
   } catch(e) { tc.innerHTML = '<div class="error-banner">Errore caricamento vestiario</div>'; }
+}
+
+function svStampaVestiario() {
+  const rows = window._svVestRows || [];
+  const statoLabel = s => ({pendente:'In attesa',approvata:'Approvata',non_approvata:'Non Approvata'}[s]||s||'—');
+  const possLabel = p => ({personale:'Personale',aziendale:'Aziendale',nessuna:'Nessuna'}[p]||p||'—');
+  const capiLabels = ['giacca','maglietta','pantaloni','felpa'];
+  const now = new Date().toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+
+  const righe = rows.map(r => {
+    const capi = capiLabels.map(c => {
+      const taglia = r[`${c}_taglia`]; const possesso = r[`${c}_possesso`]; const radio = r[`${c}_radio`];
+      if (!taglia && !possesso) return '';
+      return `<tr style="font-size:11px"><td style="padding:3px 8px;color:#666;text-transform:capitalize">${c}</td><td style="padding:3px 8px">${taglia||'—'}</td><td style="padding:3px 8px">${possLabel(possesso)}</td><td style="padding:3px 8px">${radio && radio!=='no' ? 'Sì' : 'No'}</td></tr>`;
+    }).filter(Boolean).join('');
+    return `
+      <div style="border:1px solid #ddd;border-radius:8px;padding:14px;margin-bottom:12px;page-break-inside:avoid">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-weight:700;font-size:14px">${r.nome_operatore||''} ${r.cognome_operatore||''}</div>
+          <div style="font-size:12px;color:${({pendente:'#f39c12',approvata:'#27ae60',non_approvata:'#e74c3c'}[r.stato_richiesta])||'#666'};font-weight:600">${statoLabel(r.stato_richiesta)}</div>
+        </div>
+        ${capi ? `<table style="width:100%;border-collapse:collapse;background:#f9f9f9;border-radius:6px;overflow:hidden">
+          <tr style="font-size:10px;color:#999;text-transform:uppercase;background:#eee">
+            <th style="padding:4px 8px;text-align:left">Capo</th><th style="padding:4px 8px;text-align:left">Taglia</th><th style="padding:4px 8px;text-align:left">Possesso</th><th style="padding:4px 8px;text-align:left">Radio</th>
+          </tr>${capi}</table>` : '<div style="font-size:12px;color:#999">Nessun capo inserito</div>'}
+        ${r.richiesta_capo ? `<div style="margin-top:8px;font-size:12px;color:#e67e22"><strong>Richiesta:</strong> ${r.richiesta_capo} ${r.richiesta_motivo ? '— '+r.richiesta_motivo : ''}</div>` : ''}
+      </div>`;
+  }).join('');
+
+  const win = window.open('','_blank','width=800,height=900');
+  win.document.write(`<!DOCTYPE html><html><head><title>Lista Vestiario</title>
+    <style>body{font-family:Arial,sans-serif;padding:30px;color:#222}@media print{button{display:none}}</style>
+    </head><body>
+    <div style="text-align:center;margin-bottom:24px">
+      <div style="font-size:20px;font-weight:700">Lista Vestiario Operatori</div>
+      <div style="font-size:12px;color:#666;margin-top:4px">Stampato il ${now} — ${rows.length} operatori</div>
+    </div>
+    <button onclick="window.print()" style="margin-bottom:20px;padding:8px 18px;background:#c9a227;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px">🖨️ Stampa / Salva PDF</button>
+    ${righe}
+    </body></html>`);
+  win.document.close();
 }
 
 async function svApprovaVestiario(id) {

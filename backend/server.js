@@ -395,6 +395,24 @@ app.delete('/api/incoming-messages/:id', auth, adminOnly, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.delete('/api/incoming-messages/:id/mine', auth, async (req, res) => {
+  try {
+    const r = await pool.query('DELETE FROM incoming_messages WHERE id=$1 AND from_user_id=$2 RETURNING id', [req.params.id, req.user.id]);
+    if (r.rowCount === 0) return res.status(403).json({ error: 'Non autorizzato' });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Cleanup messaggi utente più vecchi di 10 giorni
+async function cleanupOldIncomingMessages() {
+  try {
+    const r = await pool.query("DELETE FROM incoming_messages WHERE created_at < NOW() - INTERVAL '10 days'");
+    if (r.rowCount > 0) console.log(`[cleanup] Eliminati ${r.rowCount} messaggi incoming > 10 giorni`);
+  } catch (e) { console.error('[cleanup] Errore:', e.message); }
+}
+cleanupOldIncomingMessages();
+setInterval(cleanupOldIncomingMessages, 24 * 60 * 60 * 1000);
+
 // ── DOCUMENTS ─────────────────────────────────────────────────────────────────
 app.get('/api/documents/:userId', auth, async (req, res) => {
   try {

@@ -3091,8 +3091,13 @@ async function renderUserDashboard(content) {
           📋 I tuoi messaggi inviati
         </div>
         ${sentToAdmin.map(m=>`
-          <div class="user-sent-msg-item">
-            <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">${fmt(m.created_at)}</div>
+          <div class="user-sent-msg-item" id="sent-msg-${m.id}">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">
+              <div style="font-size:11px;color:var(--text-muted)">${fmt(m.created_at)}</div>
+              <button onclick="userDeleteSentMsg('${m.id}')" title="Elimina messaggio"
+                style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:0;line-height:1;flex-shrink:0"
+                onmouseover="this.style.color='#e74c3c'" onmouseout="this.style.color='var(--text-muted)'">✕</button>
+            </div>
             <div style="font-size:13px;color:var(--text)">${m.testo}</div>
             ${m.reply ? `<div class="user-sent-reply">
               💬 Risposta Admin (${fmt(m.replyAt||m.reply_at)}): ${m.reply}
@@ -5651,6 +5656,13 @@ async function sendMessageToAdmin() {
     showToast("Messaggio inviato all'amministratore ✓");
     await renderUserDashboard(document.getElementById('content'));
   } catch(e) { showToast('Errore invio messaggio', 'error'); }
+}
+
+async function userDeleteSentMsg(id) {
+  try {
+    await apiFetch(`/incoming-messages/${id}/mine`, { method: 'DELETE' });
+    document.getElementById(`sent-msg-${id}`)?.remove();
+  } catch(e) { showToast('Errore eliminazione', 'error'); }
 }
 
 

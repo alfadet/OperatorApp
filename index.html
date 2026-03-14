@@ -3855,7 +3855,7 @@ function renderDocSlot(d, docs) {
             <button class="doc-btn btn-secondary" style="font-size:10px">⬇</button>
           </a>
         </div>
-        <input type="file" id="file-${d.k}" class="doc-upload-input" accept=".jpg,.jpeg,.png,.pdf" onchange="handleDocUpload('${d.k}',this)">
+        <input type="file" id="file-${d.k}" class="doc-upload-input" accept="${d.k==='foto_selfie'?'image/*':'.jpg,.jpeg,.png,.pdf'}" onchange="handleDocUpload('${d.k}',this)">
       </div>`;
   } else {
     return `
@@ -3864,7 +3864,7 @@ function renderDocSlot(d, docs) {
         <div class="doc-name">${d.label}</div>
         <span class="doc-badge ${d.required?'badge-required':'badge-optional'}">${d.required?'Obbligatorio':'Facoltativo'}</span>
         <div style="font-size:11px;color:var(--text-muted);margin-top:8px">+ Carica</div>
-        <input type="file" id="file-${d.k}" class="doc-upload-input" accept=".jpg,.jpeg,.png,.pdf" onchange="handleDocUpload('${d.k}',this)">
+        <input type="file" id="file-${d.k}" class="doc-upload-input" accept="${d.k==='foto_selfie'?'image/*':'.jpg,.jpeg,.png,.pdf'}" onchange="handleDocUpload('${d.k}',this)">
       </div>`;
   }
 }
